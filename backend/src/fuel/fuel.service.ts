@@ -34,21 +34,61 @@ export class FuelService {
 
     return this.db.transaction(async (conn) => {
       // 1. Insert Fuel Record
-      await conn.execute(
-        `INSERT INTO fuel_transactions (id, date, truck_id, trip_id, pump_id, litres, rate, amount, slip_image)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          fuelId,
-          new Date(dto.date),
-          dto.truckId,
-          resolvedTripId,
-          dto.pumpId,
-          dto.litres || null,
-          dto.rate || null,
-          fuelAmount.toNumber(),
-          dto.slipImage || null,
-        ],
-      );
+      try {
+        await conn.execute(
+          `INSERT INTO fuel_transactions (id, date, truck_id, trip_id, pump_id, litres, rate, amount, slip_image)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [
+            fuelId,
+            new Date(dto.date),
+            dto.truckId,
+            resolvedTripId,
+            dto.pumpId,
+            dto.litres || null,
+            dto.rate || null,
+            fuelAmount.toNumber(),
+            dto.slipImage || null,
+          ],
+        );
+      } catch (err: any) {
+        if (err?.code === 'ER_BAD_FIELD_ERROR' || err?.message?.includes('Unknown column')) {
+          try {
+            await this.db.rawQuery('ALTER TABLE fuel_transactions ADD COLUMN slip_image LONGTEXT NULL');
+            await conn.execute(
+              `INSERT INTO fuel_transactions (id, date, truck_id, trip_id, pump_id, litres, rate, amount, slip_image)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              [
+                fuelId,
+                new Date(dto.date),
+                dto.truckId,
+                resolvedTripId,
+                dto.pumpId,
+                dto.litres || null,
+                dto.rate || null,
+                fuelAmount.toNumber(),
+                dto.slipImage || null,
+              ],
+            );
+          } catch {
+            await conn.execute(
+              `INSERT INTO fuel_transactions (id, date, truck_id, trip_id, pump_id, litres, rate, amount)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+              [
+                fuelId,
+                new Date(dto.date),
+                dto.truckId,
+                resolvedTripId,
+                dto.pumpId,
+                dto.litres || null,
+                dto.rate || null,
+                fuelAmount.toNumber(),
+              ],
+            );
+          }
+        } else {
+          throw err;
+        }
+      }
 
       // 2. Compute closing balance
       const [ledgerRows]: any = await conn.execute(

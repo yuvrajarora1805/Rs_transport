@@ -80,63 +80,49 @@ export class DbService implements OnModuleInit, OnModuleDestroy {
   }
 
   private async initSchema() {
+    const migrations = [
+      'ALTER TABLE dispatches ADD COLUMN driver_mobile VARCHAR(20) NULL',
+      "ALTER TABLE dispatches ADD COLUMN company_code VARCHAR(30) NOT NULL DEFAULT 'RS_TRANSPORT'",
+      'ALTER TABLE dispatches ADD COLUMN slip_image LONGTEXT NULL',
+      'ALTER TABLE parties ADD COLUMN destination_id VARCHAR(36) NULL',
+      'ALTER TABLE trips ADD COLUMN gross_weight DECIMAL(10, 3) NOT NULL DEFAULT 0.000',
+      'ALTER TABLE trips ADD COLUMN tare_weight DECIMAL(10, 3) NOT NULL DEFAULT 0.000',
+      "ALTER TABLE trips ADD COLUMN company_code VARCHAR(30) NOT NULL DEFAULT 'RS_TRANSPORT'",
+      'ALTER TABLE trips ADD COLUMN slip_image LONGTEXT NULL',
+      "ALTER TABLE settlements ADD COLUMN company_code VARCHAR(30) NOT NULL DEFAULT 'RS_TRANSPORT'",
+      'ALTER TABLE settlements ADD COLUMN slip_image LONGTEXT NULL',
+      'ALTER TABLE fuel_transactions MODIFY COLUMN pump_id VARCHAR(36) NULL',
+      'ALTER TABLE fuel_transactions ADD COLUMN slip_image LONGTEXT NULL',
+    ];
+
+    for (const sql of migrations) {
+      try {
+        await this.pool.query(sql);
+      } catch (e: any) {}
+    }
+
     try {
       const schemaPath = path.join(process.cwd(), 'sql', 'schema_mysql.sql');
-      const seedPath = path.join(process.cwd(), 'sql', 'seed_mysql.sql');
       if (fs.existsSync(schemaPath)) {
         const sql = fs.readFileSync(schemaPath, 'utf8');
         await this.pool.query(sql);
         this.logger.log('MySQL schema verified/initialized successfully');
       }
-      // Ensure column driver_mobile exists in dispatches
+    } catch (err: any) {}
+
+    for (const sql of migrations) {
       try {
-        await this.pool.query('ALTER TABLE dispatches ADD COLUMN driver_mobile VARCHAR(20) NULL');
+        await this.pool.query(sql);
       } catch (e: any) {}
-      // Ensure destination_id exists in parties
-      try {
-        await this.pool.query('ALTER TABLE parties ADD COLUMN destination_id VARCHAR(36) NULL');
-      } catch (e: any) {}
-      // Ensure gross_weight and tare_weight exist in trips
-      try {
-        await this.pool.query('ALTER TABLE trips ADD COLUMN gross_weight DECIMAL(10, 3) NOT NULL DEFAULT 0.000');
-      } catch (e: any) {}
-      try {
-        await this.pool.query('ALTER TABLE trips ADD COLUMN tare_weight DECIMAL(10, 3) NOT NULL DEFAULT 0.000');
-      } catch (e: any) {}
-      // Ensure company_code exists on dispatches, trips, settlements
-      try {
-        await this.pool.query("ALTER TABLE dispatches ADD COLUMN company_code VARCHAR(30) NOT NULL DEFAULT 'RS_TRANSPORT'");
-      } catch (e: any) {}
-      try {
-        await this.pool.query("ALTER TABLE trips ADD COLUMN company_code VARCHAR(30) NOT NULL DEFAULT 'RS_TRANSPORT'");
-      } catch (e: any) {}
-      try {
-        await this.pool.query("ALTER TABLE settlements ADD COLUMN company_code VARCHAR(30) NOT NULL DEFAULT 'RS_TRANSPORT'");
-      } catch (e: any) {}
-      // Ensure pump_id in fuel_transactions is nullable
-      try {
-        await this.pool.query('ALTER TABLE fuel_transactions MODIFY COLUMN pump_id VARCHAR(36) NULL');
-      } catch (e: any) {}
-      // Add slip_image support to tables
-      try {
-        await this.pool.query('ALTER TABLE fuel_transactions ADD COLUMN slip_image LONGTEXT NULL');
-      } catch (e: any) {}
-      try {
-        await this.pool.query('ALTER TABLE dispatches ADD COLUMN slip_image LONGTEXT NULL');
-      } catch (e: any) {}
-      try {
-        await this.pool.query('ALTER TABLE trips ADD COLUMN slip_image LONGTEXT NULL');
-      } catch (e: any) {}
-      try {
-        await this.pool.query('ALTER TABLE settlements ADD COLUMN slip_image LONGTEXT NULL');
-      } catch (e: any) {}
+    }
+
+    try {
+      const seedPath = path.join(process.cwd(), 'sql', 'seed_mysql.sql');
       if (fs.existsSync(seedPath)) {
         const seedSql = fs.readFileSync(seedPath, 'utf8');
         await this.pool.query(seedSql);
         this.logger.log('MySQL master records seeded successfully');
       }
-    } catch (err: any) {
-      this.logger.warn(`Notice while verifying MySQL tables: ${err.message}`);
-    }
+    } catch (err: any) {}
   }
 }
