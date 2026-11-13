@@ -5,7 +5,7 @@ WORKDIR /app
 
 # Install build dependencies
 COPY package*.json tsconfig*.json ./
-RUN npm ci
+RUN npm ci --legacy-peer-deps
 
 # Copy source code and SQL migrations
 COPY src/ ./src/
@@ -23,7 +23,7 @@ ENV NODE_ENV=production
 
 # Install only production dependencies
 COPY package*.json ./
-RUN npm ci --omit=dev && npm cache clean --force
+RUN npm ci --omit=dev --legacy-peer-deps && npm cache clean --force
 
 # Copy built application and migrations from builder
 COPY --from=builder /app/dist ./dist
@@ -32,4 +32,3 @@ COPY --from=builder /app/sql ./sql
 EXPOSE 4000
 
 CMD ["node", "dist/src/main.js"]
-
