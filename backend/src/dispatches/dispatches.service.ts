@@ -62,15 +62,15 @@ export class DispatchesService {
     }
 
     const res = await this.db.query(
-      `SELECT d.*, t.truck_no, s.name as source_name,
-              COALESCE(d.driver_mobile, t.mobile_no) as mobile_no
+      `SELECT d.*, t.truck_no, s.name as source_name, t.mobile_no as truck_mobile_no
        FROM dispatches d
        JOIN trucks t ON d.truck_id = t.id
        JOIN sources s ON d.source_id = s.id
        WHERE d.id = ?`,
       [id],
     );
-    return res.rows[0];
+    const row = res.rows[0] as any;
+    return row ? { ...row, mobile_no: row.driver_mobile || row.truck_mobile_no } : null;
   }
 
   async createMultiple(dtos: CreateDispatchDto[]) {
@@ -84,8 +84,7 @@ export class DispatchesService {
 
   async findAll(sourceId?: string, truckId?: string, companyCode?: string) {
     let sql = `
-      SELECT d.*, t.truck_no, t.owner_name, 
-             COALESCE(d.driver_mobile, t.mobile_no) as mobile_no, 
+      SELECT d.*, t.truck_no, t.owner_name, t.mobile_no as truck_mobile_no,
              s.name as source_name,
              trp.id as trip_id,
              trp.trip_no,
@@ -113,7 +112,10 @@ export class DispatchesService {
 
     sql += ` ORDER BY d.date DESC, d.created_at DESC`;
     const res = await this.db.query(sql, params);
-    return res.rows;
+    return res.rows.map((r: any) => ({
+      ...r,
+      mobile_no: r.driver_mobile || r.truck_mobile_no,
+    }));
   }
 
   async remove(id: string) {

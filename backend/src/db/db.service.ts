@@ -90,20 +90,18 @@ export class DbService implements OnModuleInit, OnModuleDestroy {
       }
       // Ensure column driver_mobile exists in dispatches
       try {
-        await this.pool.query('ALTER TABLE dispatches ADD COLUMN driver_mobile VARCHAR(20) NULL AFTER remarks');
-      } catch (e: any) {
-        // Ignore duplicate column error if already exists
-      }
+        await this.pool.query('ALTER TABLE dispatches ADD COLUMN driver_mobile VARCHAR(20) NULL');
+      } catch (e: any) {}
       // Ensure destination_id exists in parties
       try {
-        await this.pool.query('ALTER TABLE parties ADD COLUMN destination_id VARCHAR(36) NULL AFTER contact_no');
+        await this.pool.query('ALTER TABLE parties ADD COLUMN destination_id VARCHAR(36) NULL');
       } catch (e: any) {}
       // Ensure gross_weight and tare_weight exist in trips
       try {
-        await this.pool.query('ALTER TABLE trips ADD COLUMN gross_weight DECIMAL(10, 3) NOT NULL DEFAULT 0.000 AFTER unloading_date');
+        await this.pool.query('ALTER TABLE trips ADD COLUMN gross_weight DECIMAL(10, 3) NOT NULL DEFAULT 0.000');
       } catch (e: any) {}
       try {
-        await this.pool.query('ALTER TABLE trips ADD COLUMN tare_weight DECIMAL(10, 3) NOT NULL DEFAULT 0.000 AFTER gross_weight');
+        await this.pool.query('ALTER TABLE trips ADD COLUMN tare_weight DECIMAL(10, 3) NOT NULL DEFAULT 0.000');
       } catch (e: any) {}
       // Ensure company_code exists on dispatches, trips, settlements
       try {
