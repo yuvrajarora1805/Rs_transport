@@ -15,26 +15,51 @@ export class DispatchesService {
 
     const id = uuidv4();
     const companyCode = dto.companyCode || 'RS_TRANSPORT';
-    await this.db.query(
-      `INSERT INTO dispatches (id, sr_no, date, truck_id, source_id, bales, tare_weight, gross_weight, net_weight, destination, remarks, driver_mobile, company_code, slip_image)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        id,
-        dto.srNo || null,
-        new Date(dto.date),
-        dto.truckId,
-        dto.sourceId,
-        dto.bales || null,
-        dto.tareWeight || 0,
-        dto.grossWeight || 0,
-        dto.netWeight || 0,
-        dto.destination || null,
-        dto.remarks || null,
-        dto.driverMobile || null,
-        companyCode,
-        dto.slipImage || null,
-      ],
-    );
+    const insertSql = `INSERT INTO dispatches (id, sr_no, date, truck_id, source_id, bales, destination, remarks, driver_mobile, company_code, slip_image)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    const insertParams = [
+      id,
+      dto.srNo || null,
+      new Date(dto.date),
+      dto.truckId,
+      dto.sourceId,
+      dto.bales || null,
+      dto.destination || null,
+      dto.remarks || null,
+      dto.driverMobile || null,
+      companyCode,
+      dto.slipImage || null,
+    ];
+
+    try {
+      await this.db.query(insertSql, insertParams);
+    } catch (err: any) {
+      if (err?.code === 'ER_BAD_FIELD_ERROR' || err?.message?.includes('Unknown column')) {
+        try {
+          await this.db.rawQuery("ALTER TABLE dispatches ADD COLUMN company_code VARCHAR(30) NOT NULL DEFAULT 'RS_TRANSPORT'");
+          await this.db.rawQuery('ALTER TABLE dispatches ADD COLUMN driver_mobile VARCHAR(20) NULL');
+          await this.db.rawQuery('ALTER TABLE dispatches ADD COLUMN slip_image LONGTEXT NULL');
+          await this.db.query(insertSql, insertParams);
+        } catch {
+          await this.db.query(
+            `INSERT INTO dispatches (id, sr_no, date, truck_id, source_id, bales, destination, remarks)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              id,
+              dto.srNo || null,
+              new Date(dto.date),
+              dto.truckId,
+              dto.sourceId,
+              dto.bales || null,
+              dto.destination || null,
+              dto.remarks || null,
+            ],
+          );
+        }
+      } else {
+        throw err;
+      }
+    }
 
     const res = await this.db.query(
       `SELECT d.*, t.truck_no, s.name as source_name,

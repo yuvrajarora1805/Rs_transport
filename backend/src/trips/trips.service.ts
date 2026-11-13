@@ -51,6 +51,8 @@ export class TripsService {
     } catch (err: any) {
       if (err?.code === 'ER_BAD_FIELD_ERROR' || err?.message?.includes('Unknown column')) {
         try {
+          await this.db.rawQuery('ALTER TABLE trips ADD COLUMN gross_weight DECIMAL(10, 3) NOT NULL DEFAULT 0.000');
+          await this.db.rawQuery('ALTER TABLE trips ADD COLUMN tare_weight DECIMAL(10, 3) NOT NULL DEFAULT 0.000');
           await this.db.rawQuery("ALTER TABLE trips ADD COLUMN company_code VARCHAR(30) NOT NULL DEFAULT 'RS_TRANSPORT'");
           await this.db.rawQuery('ALTER TABLE trips ADD COLUMN slip_image LONGTEXT NULL');
           await this.db.query(insertTripSql, insertTripParams);
@@ -58,8 +60,8 @@ export class TripsService {
           await this.db.query(
             `INSERT INTO trips (
               id, trip_no, dispatch_id, truck_id, destination_id, party_id,
-              transporter_id, unloading_date, gross_weight, tare_weight, net_weight, rate_per_unit, gross_freight
-             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              transporter_id, unloading_date, net_weight, rate_per_unit, gross_freight
+             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               id,
               dto.tripNo,
@@ -69,8 +71,6 @@ export class TripsService {
               dto.partyId || null,
               dto.transporterId || null,
               dto.unloadingDate ? new Date(dto.unloadingDate) : null,
-              grossWeight.toNumber(),
-              tareWeight.toNumber(),
               weight.toNumber(),
               rate.toNumber(),
               gross.toNumber(),
