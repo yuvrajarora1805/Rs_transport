@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { DbService } from '../db/db.service';
 import { CreateDispatchDto } from './dto/create-dispatch.dto';
 import { v4 as uuidv4 } from 'uuid';
@@ -7,7 +7,37 @@ import { v4 as uuidv4 } from 'uuid';
 export class DispatchesService {
   constructor(private db: DbService) {}
 
+  private async checkDuplicateSrNo(srNo?: string, companyCode?: string) {
+    if (!srNo || !srNo.trim()) return;
+    const trimmed = srNo.trim();
+    const existing = await this.db.query(
+      'SELECT id FROM dispatches WHERE sr_no = ? AND company_code = ? AND is_cancelled = false LIMIT 1',
+      [trimmed, companyCode || 'RS_TRANSPORT'],
+    );
+    if (existing.rows.length > 0) {
+      throw new ConflictException(
+        `Invoice / SR Number "${trimmed}" already exists. Please use a unique invoice / SR number.`,
+      );
+    }
+  }
+
   async create(dto: CreateDispatchDto) {
+    await this.checkDuplicateSrNo(dto.srNo, dto.companyCode);
+    return this.insertSingleDispatch(dto);
+  }
+
+  async createMultiple(dtos: CreateDispatchDto[]) {
+    if (dtos.length === 0) return [];
+    // Verify invoice / SR number uniqueness once for the whole multi-truck batch
+    await this.checkDuplicateSrNo(dtos[0].srNo, dtos[0].companyCode);
+    const results = [];
+    for (const dto of dtos) {
+      results.push(await this.insertSingleDispatch(dto));
+    }
+    return results;
+  }
+
+  private async insertSingleDispatch(dto: CreateDispatchDto) {
     const truck = await this.db.query('SELECT id FROM trucks WHERE id = ?', [dto.truckId]);
     if (truck.rows.length === 0) {
       throw new NotFoundException(`Truck with ID ${dto.truckId} not found`);
@@ -20,7 +50,7 @@ export class DispatchesService {
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
     const insertParams = [
       id,
-      dto.srNo || null,
+      dto.srNo ? dto.srNo.trim() : null,
       new Date(dto.date),
       dto.truckId,
       dto.sourceId,
@@ -49,7 +79,7 @@ export class DispatchesService {
              VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               id,
-              dto.srNo || null,
+              dto.srNo ? dto.srNo.trim() : null,
               new Date(dto.date),
               dto.truckId,
               dto.sourceId,
@@ -74,15 +104,6 @@ export class DispatchesService {
     );
     const row = res.rows[0] as any;
     return row ? { ...row, mobile_no: row.driver_mobile || row.truck_mobile_no } : null;
-  }
-
-  async createMultiple(dtos: CreateDispatchDto[]) {
-    const results = [];
-    for (const dto of dtos) {
-      const created = await this.create(dto);
-      results.push(created);
-    }
-    return results;
   }
 
   async findAll(sourceId?: string, truckId?: string, companyCode?: string) {
