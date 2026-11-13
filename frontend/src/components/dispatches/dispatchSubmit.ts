@@ -4,10 +4,6 @@ import { MultiTruckRow } from './MultiTruckRowCard';
 interface SingleTruckPayload {
   truckId: string;
   bales?: string;
-  tareWeight?: string;
-  grossWeight?: string;
-  netWeight?: string;
-  slipImage?: string;
   driverMobile?: string;
 }
 
@@ -44,10 +40,6 @@ export async function submitDispatch({
       remarks: commonForm.remarks || undefined,
       truckId: r.truckId,
       bales: r.bales ? Number(r.bales) : undefined,
-      tareWeight: r.tareWeight ? Number(r.tareWeight) : undefined,
-      grossWeight: r.grossWeight ? Number(r.grossWeight) : undefined,
-      netWeight: r.netWeight ? Number(r.netWeight) : undefined,
-      slipImage: r.slipImage || undefined,
       driverMobile: r.driverMobile || undefined,
       companyCode,
     }));
@@ -64,14 +56,9 @@ export async function submitDispatch({
         remarks: commonForm.remarks || undefined,
         truckId: singleTruck.truckId,
         bales: singleTruck.bales ? Number(singleTruck.bales) : undefined,
-        tareWeight: singleTruck.tareWeight ? Number(singleTruck.tareWeight) : undefined,
-        grossWeight: singleTruck.grossWeight ? Number(singleTruck.grossWeight) : undefined,
-        netWeight: singleTruck.netWeight ? Number(singleTruck.netWeight) : undefined,
-        slipImage: singleTruck.slipImage || undefined,
         driverMobile: singleTruck.driverMobile || undefined,
         companyCode,
       }),
     });
   }
 }
-

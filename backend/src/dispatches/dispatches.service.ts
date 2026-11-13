@@ -61,10 +61,14 @@ export class DispatchesService {
     let sql = `
       SELECT d.*, t.truck_no, t.owner_name, 
              COALESCE(d.driver_mobile, t.mobile_no) as mobile_no, 
-             s.name as source_name
+             s.name as source_name,
+             trp.id as trip_id,
+             trp.trip_no,
+             trp.net_weight as loaded_weight
       FROM dispatches d
       JOIN trucks t ON d.truck_id = t.id
       JOIN sources s ON d.source_id = s.id
+      LEFT JOIN trips trp ON trp.dispatch_id = d.id
       WHERE d.is_cancelled = false
     `;
     const params: any[] = [];

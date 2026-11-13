@@ -8,23 +8,19 @@ import { MultiTruckRowCard, MultiTruckRow } from './MultiTruckRowCard';
 interface MultiTruckListSectionProps {
   multiTrucks: MultiTruckRow[];
   trucks: Truck[];
-  truckTareHistories: Record<string, any[]>;
   onOpenAddTruck: () => void;
   onAddRow: () => void;
   onRemoveRow: (id: string) => void;
   onRowChange: (id: string, field: keyof MultiTruckRow, value: string) => void;
-  onImageFile: (file?: File, cb?: (img: string) => void) => void;
 }
 
 export function MultiTruckListSection({
   multiTrucks,
   trucks,
-  truckTareHistories,
   onOpenAddTruck,
   onAddRow,
   onRemoveRow,
   onRowChange,
-  onImageFile,
 }: MultiTruckListSectionProps) {
   return (
     <div className="space-y-4 pt-4 border-t border-slate-200">
@@ -57,15 +53,12 @@ export function MultiTruckListSection({
             row={row}
             index={idx}
             trucks={trucks}
-            tareHistory={truckTareHistories[row.truckId] || []}
             canRemove={multiTrucks.length > 1}
             onChange={(f, v) => onRowChange(row.id, f, v)}
             onRemove={() => onRemoveRow(row.id)}
-            onImageUpload={(file) => onImageFile(file, (img) => onRowChange(row.id, 'slipImage', img))}
           />
         ))}
       </div>
     </div>
   );
 }
-

@@ -27,12 +27,11 @@ export default function NewDispatchPage() {
   const [error, setError] = useState<string | null>(null);
   const [isMultiMode, setIsMultiMode] = useState(false);
   const [commonForm, setCommonForm] = useState({ date: '', srNo: '', sourceId: '', destination: '', remarks: '' });
-  const [singleTruck, setSingleTruck] = useState({ truckId: '', bales: '', driverMobile: '', tareWeight: '', grossWeight: '', netWeight: '', slipImage: '' });
+  const [singleTruck, setSingleTruck] = useState({ truckId: '', bales: '', driverMobile: '' });
   const [multiTrucks, setMultiTrucks] = useState<MultiTruckRow[]>([
-    { id: 'row-1', truckId: '', bales: '', driverMobile: '', tareWeight: '', grossWeight: '', netWeight: '', slipImage: '' },
-    { id: 'row-2', truckId: '', bales: '', driverMobile: '', tareWeight: '', grossWeight: '', netWeight: '', slipImage: '' },
+    { id: 'row-1', truckId: '', bales: '', driverMobile: '' },
+    { id: 'row-2', truckId: '', bales: '', driverMobile: '' },
   ]);
-  const [truckTareHistories, setTruckTareHistories] = useState<Record<string, any[]>>({});
 
   const {
     modals, setModals, modalLoading, modalError, setModalError,
@@ -40,14 +39,6 @@ export default function NewDispatchPage() {
     newSourceForm, setNewSourceForm, handleAddSource,
     newDestForm, setNewDestForm, handleAddDest,
   } = useDispatchModals(setTrucks, setSources, setDestinations, setSingleTruck, setCommonForm);
-
-  const fetchTareForTruck = async (tId: string) => {
-    if (!tId || truckTareHistories[tId]) return;
-    try {
-      const res = await apiFetch<any[]>(`/masters/trucks/${tId}/recent-tare`);
-      setTruckTareHistories((prev) => ({ ...prev, [tId]: res || [] }));
-    } catch (e) {}
-  };
 
   useEffect(() => {
     setCommonForm((f) => ({ ...f, date: new Date().toISOString().split('T')[0] }));
@@ -65,26 +56,8 @@ export default function NewDispatchPage() {
 
   const handleMultiRowChange = (id: string, field: keyof MultiTruckRow, value: string) => {
     setMultiTrucks((prev) =>
-      prev.map((r) => {
-        if (r.id !== id) return r;
-        const updated = { ...r, [field]: value };
-        if (field === 'truckId') fetchTareForTruck(value);
-        if (field === 'grossWeight' || field === 'tareWeight') {
-          const g = Number(field === 'grossWeight' ? value : r.grossWeight);
-          const t = Number(field === 'tareWeight' ? value : r.tareWeight);
-          if (g > 0 && t > 0 && g >= t) updated.netWeight = (g - t).toFixed(3);
-        }
-        return updated;
-      })
+      prev.map((r) => (r.id === id ? { ...r, [field]: value } : r))
     );
-  };
-
-  const handleImageFile = (file?: File, cb?: (img: string) => void) => {
-    if (!file) return;
-    if (file.size > 5 * 1024 * 1024) return setError('Slip image must be under 5MB');
-    const reader = new FileReader();
-    reader.onloadend = () => cb?.(reader.result as string);
-    reader.readAsDataURL(file);
   };
 
   const handleSubmit = async (e?: React.FormEvent) => {
@@ -150,35 +123,23 @@ export default function NewDispatchPage() {
                   <h3 className="text-sm font-bold text-slate-900">
                     {isMultiMode ? `Assigned Fleet (${multiTrucks.length} Trucks)` : 'Vehicle Assignment'}
                   </h3>
-                  <p className="text-xs text-slate-500">Record independent truck registration, bales, weights & slip photos</p>
+                  <p className="text-xs text-slate-500">Record truck registration, bales count & driver contact details</p>
                 </div>
               </div>
 
               {!isMultiMode ? (
                 <SingleTruckSection
-                  form={singleTruck} trucks={trucks} tareHistory={truckTareHistories[singleTruck.truckId] || []}
-                  onChange={(f, v) => {
-                    setSingleTruck((prev) => {
-                      const u = { ...prev, [f]: v };
-                      if (f === 'truckId') fetchTareForTruck(v);
-                      if (f === 'grossWeight' || f === 'tareWeight') {
-                        const g = Number(f === 'grossWeight' ? v : prev.grossWeight);
-                        const t = Number(f === 'tareWeight' ? v : prev.tareWeight);
-                        if (g > 0 && t > 0 && g >= t) u.netWeight = (g - t).toFixed(3);
-                      }
-                      return u;
-                    });
-                  }}
+                  form={singleTruck} trucks={trucks}
+                  onChange={(f, v) => setSingleTruck((prev) => ({ ...prev, [f]: v }))}
                   onOpenAddTruck={() => { setModalError(null); setModals((m) => ({ ...m, truck: true })); }}
-                  onImageUpload={(file) => handleImageFile(file, (img) => setSingleTruck((s) => ({ ...s, slipImage: img })))}
                 />
               ) : (
                 <MultiTruckListSection
-                  multiTrucks={multiTrucks} trucks={trucks} truckTareHistories={truckTareHistories}
+                  multiTrucks={multiTrucks} trucks={trucks}
                   onOpenAddTruck={() => { setModalError(null); setModals((m) => ({ ...m, truck: true })); }}
-                  onAddRow={() => setMultiTrucks((prev) => [...prev, { id: `row-${Date.now()}`, truckId: '', bales: '', driverMobile: '', tareWeight: '', grossWeight: '', netWeight: '', slipImage: '' }])}
+                  onAddRow={() => setMultiTrucks((prev) => [...prev, { id: `row-${Date.now()}`, truckId: '', bales: '', driverMobile: '' }])}
                   onRemoveRow={(id) => setMultiTrucks((prev) => prev.filter((r) => r.id !== id))}
-                  onRowChange={handleMultiRowChange} onImageFile={handleImageFile}
+                  onRowChange={handleMultiRowChange}
                 />
               )}
             </div>
@@ -213,9 +174,9 @@ export default function NewDispatchPage() {
       <DispatchQuickModals
         modals={modals} onClose={(k) => setModals((m) => ({ ...m, [k]: false }))}
         onAddTruck={handleAddTruck} newTruckForm={newTruckForm} setNewTruckForm={setNewTruckForm}
+        modalLoading={modalLoading} modalError={modalError}
         onAddSource={handleAddSource} newSourceForm={newSourceForm} setNewSourceForm={setNewSourceForm}
         onAddDest={handleAddDest} newDestForm={newDestForm} setNewDestForm={setNewDestForm}
-        modalLoading={modalLoading} modalError={modalError}
       />
     </div>
   );

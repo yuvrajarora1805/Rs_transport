@@ -3,12 +3,13 @@
 import React from 'react';
 import { Truck, Source } from '../../types';
 import { Truck as TruckIcon, MapPin, Send } from 'lucide-react';
+import { MultiTruckRow } from './MultiTruckRowCard';
 
 interface DispatchSummarySidebarProps {
   isMultiMode: boolean;
   selectedTruck?: Truck;
   singleBales?: string;
-  multiTrucks?: { truckId: string; bales: string; tareWeight?: string; grossWeight?: string; netWeight?: string }[];
+  multiTrucks?: MultiTruckRow[];
   trucks?: Truck[];
   multiTruckCount: number;
   totalMultiBales: number;
@@ -31,8 +32,6 @@ export function DispatchSummarySidebar({
   loading = false,
   onSubmit,
 }: DispatchSummarySidebarProps) {
-  const totalNetWeight = multiTrucks.reduce((sum, r) => sum + Number(r.netWeight || 0), 0);
-
   return (
     <div className="space-y-5 lg:sticky lg:top-24 self-start">
       <div className="bg-white rounded-2xl border border-slate-200 p-5 sm:p-6 shadow-xs">
@@ -66,12 +65,6 @@ export function DispatchSummarySidebar({
                 <span className="text-slate-500">Total Bales:</span>
                 <span className="font-bold text-blue-600">{totalMultiBales}</span>
               </div>
-              {totalNetWeight > 0 && (
-                <div className="flex justify-between py-1 border-b border-slate-50">
-                  <span className="text-slate-500">Total Net Weight:</span>
-                  <span className="font-bold text-emerald-700">{totalNetWeight.toFixed(3)} MT</span>
-                </div>
-              )}
               {multiTrucks.filter((r) => r.truckId).length > 0 && (
                 <div className="pt-1">
                   <span className="text-[11px] font-bold text-slate-600 block mb-1.5">Assigned Vehicles:</span>
@@ -81,7 +74,7 @@ export function DispatchSummarySidebar({
                       return (
                         <div key={i} className="flex items-center justify-between p-1.5 bg-slate-50 rounded-lg text-xs border border-slate-100">
                           <span className="font-bold text-slate-800">{tObj?.truckNo || 'Truck'}</span>
-                          <span className="text-slate-500 font-medium">{r.bales ? `${r.bales} bales` : ''} {r.netWeight ? `• ${r.netWeight} MT` : ''}</span>
+                          <span className="text-slate-500 font-medium">{r.bales ? `${r.bales} bales` : ''}</span>
                         </div>
                       );
                     })}
@@ -121,11 +114,9 @@ export function DispatchSummarySidebar({
           <MapPin size={16} className="text-blue-600" /> Operational Rule
         </p>
         <p className="leading-relaxed">
-          Recording a dispatch registers truck departure. When trucks arrive at destination, link each under{' '}
-          <strong>Trips & Freight</strong>.
+          Recording a dispatch books truck departure. Once loaded and weighed at the Dharamkanta/weighbridge, record weights in <strong>Step 2: Trips & Freight</strong>.
         </p>
       </div>
     </div>
   );
 }
-

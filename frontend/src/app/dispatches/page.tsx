@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { Header } from '../../components/layout/Header';
 import { DataTable, Column } from '../../components/ui/DataTable';
+import { Badge } from '../../components/ui/Badge';
 import { apiFetch, formatDate } from '../../lib/api';
 import { Dispatch, Source } from '../../types';
 import { useCompany } from '../../context/CompanyContext';
@@ -19,7 +20,6 @@ export default function DispatchesPage() {
   const [deleteTarget, setDeleteTarget] = useState<Dispatch | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
 
-  // Compute stats for overview cards
   const totalBales = dispatches.reduce((acc, d) => acc + (Number(d.bales) || 0), 0);
   const uniqueTrucks = new Set(dispatches.map((d) => d.truckId || (d as any).truck_id).filter(Boolean)).size;
   const uniqueSources = new Set(dispatches.map((d) => d.sourceId || (d as any).source_id).filter(Boolean)).size;
@@ -85,16 +85,37 @@ export default function DispatchesPage() {
     { key: 'bales', header: 'Bales' },
     { key: 'mobileNo', header: 'Driver / Mobile', render: (row) => (row as any).mobile_no || row.truck?.mobileNo || '-' },
     {
+      key: 'status', header: 'Loading & Weighing',
+      render: (row) => {
+        const tripId = (row as any).trip_id;
+        const tripNo = (row as any).trip_no;
+        const netWeight = (row as any).loaded_weight;
+        if (tripId) {
+          return (
+            <div className="flex flex-col items-start gap-0.5">
+              <Badge variant="success">✓ Loaded</Badge>
+              <Link href="/trips" className="text-[11px] font-bold text-blue-600 hover:underline">
+                Trip #{tripNo} {netWeight ? `(${Number(netWeight).toFixed(2)} MT)` : ''}
+              </Link>
+            </div>
+          );
+        }
+        return (
+          <Link
+            href={`/trips/new?dispatchId=${row.id}&truckId=${row.truckId || (row as any).truck_id || ''}&srNo=${encodeURIComponent(row.srNo || (row as any).sr_no || '')}&destination=${encodeURIComponent(row.destination || '')}`}
+            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-2xs"
+          >
+            + Record Loading →
+          </Link>
+        );
+      },
+    },
+    {
       key: 'actions', header: 'Action',
       render: (row) => (
-        <div className="flex items-center gap-3">
-          <Link href={`/trips/new?dispatchId=${row.id}&truckId=${row.truckId || (row as any).truck_id || ''}&srNo=${encodeURIComponent(row.srNo || (row as any).sr_no || '')}&destination=${encodeURIComponent(row.destination || '')}`} className="text-xs font-semibold text-blue-600 hover:underline">
-            Create Trip →
-          </Link>
-          <button type="button" onClick={() => setDeleteTarget(row)} className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors" title="Delete Dispatch">
-            <Trash2 size={15} />
-          </button>
-        </div>
+        <button type="button" onClick={() => setDeleteTarget(row)} className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors" title="Delete Dispatch">
+          <Trash2 size={15} />
+        </button>
       ),
     },
   ];
