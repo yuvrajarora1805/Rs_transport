@@ -119,30 +119,18 @@ export class DbService implements OnModuleInit, OnModuleDestroy {
       try {
         await this.pool.query('ALTER TABLE fuel_transactions MODIFY COLUMN pump_id VARCHAR(36) NULL');
       } catch (e: any) {}
-      // Add slip_image/receipt support to fuel_transactions
+      // Add slip_image support to tables
       try {
-        await this.pool.query('ALTER TABLE fuel_transactions ADD COLUMN slip_image LONGTEXT NULL AFTER amount');
-      } catch (e: any) {}
-      // Add tare_weight and gross_weight support to dispatches for multi-truck weighing
-      try {
-        await this.pool.query('ALTER TABLE dispatches ADD COLUMN tare_weight DECIMAL(10, 3) NULL DEFAULT 0.000 AFTER bales');
+        await this.pool.query('ALTER TABLE fuel_transactions ADD COLUMN slip_image LONGTEXT NULL');
       } catch (e: any) {}
       try {
-        await this.pool.query('ALTER TABLE dispatches ADD COLUMN gross_weight DECIMAL(10, 3) NULL DEFAULT 0.000 AFTER tare_weight');
+        await this.pool.query('ALTER TABLE dispatches ADD COLUMN slip_image LONGTEXT NULL');
       } catch (e: any) {}
       try {
-        await this.pool.query('ALTER TABLE dispatches ADD COLUMN net_weight DECIMAL(10, 3) NULL DEFAULT 0.000 AFTER gross_weight');
+        await this.pool.query('ALTER TABLE trips ADD COLUMN slip_image LONGTEXT NULL');
       } catch (e: any) {}
       try {
-        await this.pool.query('ALTER TABLE dispatches ADD COLUMN slip_image LONGTEXT NULL AFTER net_weight');
-      } catch (e: any) {}
-      // Add slip_image support to trips
-      try {
-        await this.pool.query('ALTER TABLE trips ADD COLUMN slip_image LONGTEXT NULL AFTER company_code');
-      } catch (e: any) {}
-      // Add slip_image support to settlements
-      try {
-        await this.pool.query('ALTER TABLE settlements ADD COLUMN slip_image LONGTEXT NULL AFTER company_code');
+        await this.pool.query('ALTER TABLE settlements ADD COLUMN slip_image LONGTEXT NULL');
       } catch (e: any) {}
       if (fs.existsSync(seedPath)) {
         const seedSql = fs.readFileSync(seedPath, 'utf8');

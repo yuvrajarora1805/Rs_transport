@@ -31,28 +31,61 @@ export class SettlementsService {
 
     const id = uuidv4();
     const companyCode = trip.company_code || 'RS_TRANSPORT';
-    await this.db.query(
-      `INSERT INTO settlements (
+    const insertSql = `INSERT INTO settlements (
         id, trip_id, settlement_date, gross_freight, advance_amount, diesel_amount,
         commission, other_deductions, net_payable, total_paid, outstanding, status, company_code, slip_image
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        id,
-        dto.tripId,
-        new Date(),
-        gross.toNumber(),
-        advance.toNumber(),
-        diesel.toNumber(),
-        commission.toNumber(),
-        other.toNumber(),
-        netPayable.toNumber(),
-        0,
-        netPayable.toNumber(),
-        'APPROVED',
-        companyCode,
-        dto.slipImage || null,
-      ],
-    );
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    const insertParams = [
+      id,
+      dto.tripId,
+      new Date(),
+      gross.toNumber(),
+      advance.toNumber(),
+      diesel.toNumber(),
+      commission.toNumber(),
+      other.toNumber(),
+      netPayable.toNumber(),
+      0,
+      netPayable.toNumber(),
+      'APPROVED',
+      companyCode,
+      dto.slipImage || null,
+    ];
+
+    try {
+      await this.db.query(insertSql, insertParams);
+    } catch (err: any) {
+      if (err?.code === 'ER_BAD_FIELD_ERROR' || err?.message?.includes('Unknown column')) {
+        try {
+          await this.db.rawQuery("ALTER TABLE settlements ADD COLUMN company_code VARCHAR(30) NOT NULL DEFAULT 'RS_TRANSPORT'");
+          await this.db.rawQuery('ALTER TABLE settlements ADD COLUMN slip_image LONGTEXT NULL');
+          await this.db.query(insertSql, insertParams);
+        } catch {
+          await this.db.query(
+            `INSERT INTO settlements (
+              id, trip_id, settlement_date, gross_freight, advance_amount, diesel_amount,
+              commission, other_deductions, net_payable, total_paid, outstanding, status
+             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              id,
+              dto.tripId,
+              new Date(),
+              gross.toNumber(),
+              advance.toNumber(),
+              diesel.toNumber(),
+              commission.toNumber(),
+              other.toNumber(),
+              netPayable.toNumber(),
+              0,
+              netPayable.toNumber(),
+              'APPROVED',
+            ],
+          );
+        }
+      } else {
+        throw err;
+      }
+    }
 
     return this.findOne(id);
   }
@@ -80,13 +113,28 @@ export class SettlementsService {
     }
 
     sql += ` ORDER BY s.created_at DESC`;
-    const res = await this.db.query(sql, params);
-    return res.rows;
+    try {
+      const res = await this.db.query(sql, params);
+      return res.rows;
+    } catch (err: any) {
+      if (err?.message?.includes('slip_image') || err?.code === 'ER_BAD_FIELD_ERROR') {
+        try {
+          await this.db.rawQuery('ALTER TABLE trips ADD COLUMN slip_image LONGTEXT NULL');
+          await this.db.rawQuery('ALTER TABLE settlements ADD COLUMN slip_image LONGTEXT NULL');
+          const retryRes = await this.db.query(sql, params);
+          return retryRes.rows;
+        } catch {
+          const fallbackSql = sql.replace('t.slip_image as trip_slip_image,', '');
+          const fallbackRes = await this.db.query(fallbackSql, params);
+          return fallbackRes.rows;
+        }
+      }
+      throw err;
+    }
   }
 
   async findOne(id: string) {
-    const res = await this.db.query(
-      `SELECT s.*, t.trip_no, t.unloading_date, t.slip_image as trip_slip_image, trk.truck_no, trk.owner_name,
+    let querySql = `SELECT s.*, t.trip_no, t.unloading_date, t.slip_image as trip_slip_image, trk.truck_no, trk.owner_name,
               d.name as destination_name, p.name as party_name, transp.name as transporter_name
        FROM settlements s
        JOIN trips t ON s.trip_id = t.id
@@ -94,9 +142,25 @@ export class SettlementsService {
        LEFT JOIN destinations d ON t.destination_id = d.id
        LEFT JOIN parties p ON t.party_id = p.id
        LEFT JOIN transporters transp ON t.transporter_id = transp.id
-       WHERE s.id = ?`,
-      [id],
-    );
+       WHERE s.id = ?`;
+
+    let res: any;
+    try {
+      res = await this.db.query(querySql, [id]);
+    } catch (err: any) {
+      if (err?.message?.includes('slip_image') || err?.code === 'ER_BAD_FIELD_ERROR') {
+        try {
+          await this.db.rawQuery('ALTER TABLE trips ADD COLUMN slip_image LONGTEXT NULL');
+          await this.db.rawQuery('ALTER TABLE settlements ADD COLUMN slip_image LONGTEXT NULL');
+          res = await this.db.query(querySql, [id]);
+        } catch {
+          const fallbackSql = querySql.replace('t.slip_image as trip_slip_image,', '');
+          res = await this.db.query(fallbackSql, [id]);
+        }
+      } else {
+        throw err;
+      }
+    }
     if (res.rows.length === 0) {
       throw new NotFoundException(`Settlement ID ${id} not found`);
     }

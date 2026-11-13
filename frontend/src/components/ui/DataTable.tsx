@@ -17,6 +17,7 @@ interface DataTableProps<T> {
   emptyMessage?: string;
   dateKey?: keyof T;
   enableDateFilter?: boolean;
+  stickyFirstColumn?: boolean;
 }
 
 export function DataTable<T extends Record<string, any>>({
@@ -27,6 +28,7 @@ export function DataTable<T extends Record<string, any>>({
   emptyMessage = 'No records found',
   dateKey,
   enableDateFilter = true,
+  stickyFirstColumn = true,
 }: DataTableProps<T>) {
   const [search, setSearch] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -156,15 +158,23 @@ export function DataTable<T extends Record<string, any>>({
         </div>
       )}
 
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto w-full [scrollbar-width:thin] [scrollbar-color:#cbd5e1_transparent] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar-track]:bg-slate-100/60 [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-slate-400">
         <table className="w-full text-left text-sm text-slate-700">
-          <thead className="bg-slate-100/90 text-xs uppercase font-bold text-slate-700 border-b border-slate-200">
+          <thead className="bg-slate-100/95 text-xs uppercase font-bold text-slate-700 border-b border-slate-200">
             <tr>
-              {columns.map((col) => (
-                <th key={col.key} className="px-6 py-4 whitespace-nowrap">
-                  {col.header}
-                </th>
-              ))}
+              {columns.map((col, idx) => {
+                const isSticky = stickyFirstColumn && idx === 0;
+                return (
+                  <th
+                    key={col.key}
+                    className={`px-4 py-3.5 whitespace-nowrap ${
+                      isSticky ? 'sticky left-0 z-20 bg-slate-100 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.12)]' : ''
+                    }`}
+                  >
+                    {col.header}
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 text-sm">
@@ -180,13 +190,21 @@ export function DataTable<T extends Record<string, any>>({
                 </td>
               </tr>
             ) : (
-              paginatedData.map((row, idx) => (
-                <tr key={idx} className="hover:bg-slate-50/90 transition-colors">
-                  {columns.map((col) => (
-                    <td key={col.key} className="px-6 py-4 whitespace-nowrap">
-                      {col.render ? col.render(row) : row[col.key] ?? '-'}
-                    </td>
-                  ))}
+              paginatedData.map((row, rowIdx) => (
+                <tr key={rowIdx} className="group hover:bg-slate-50/90 transition-colors">
+                  {columns.map((col, colIdx) => {
+                    const isSticky = stickyFirstColumn && colIdx === 0;
+                    return (
+                      <td
+                        key={col.key}
+                        className={`px-4 py-3.5 whitespace-nowrap ${
+                          isSticky ? 'sticky left-0 z-10 bg-white group-hover:bg-slate-50 shadow-[2px_0_4px_-2px_rgba(0,0,0,0.08)]' : ''
+                        }`}
+                      >
+                        {col.render ? col.render(row) : row[col.key] ?? '-'}
+                      </td>
+                    );
+                  })}
                 </tr>
               ))
             )}

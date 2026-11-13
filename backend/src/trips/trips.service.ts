@@ -24,29 +24,63 @@ export class TripsService {
 
     const id = uuidv4();
     const companyCode = dto.companyCode || 'RS_TRANSPORT';
-    await this.db.query(
-      `INSERT INTO trips (
+    const insertTripSql = `INSERT INTO trips (
         id, trip_no, dispatch_id, truck_id, destination_id, party_id,
         transporter_id, unloading_date, gross_weight, tare_weight, net_weight, rate_per_unit, gross_freight, company_code, slip_image
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [
-        id,
-        dto.tripNo,
-        dto.dispatchId || null,
-        dto.truckId,
-        dto.destinationId || null,
-        dto.partyId || null,
-        dto.transporterId || null,
-        dto.unloadingDate ? new Date(dto.unloadingDate) : null,
-        grossWeight.toNumber(),
-        tareWeight.toNumber(),
-        weight.toNumber(),
-        rate.toNumber(),
-        gross.toNumber(),
-        companyCode,
-        dto.slipImage || null,
-      ],
-    );
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    const insertTripParams = [
+      id,
+      dto.tripNo,
+      dto.dispatchId || null,
+      dto.truckId,
+      dto.destinationId || null,
+      dto.partyId || null,
+      dto.transporterId || null,
+      dto.unloadingDate ? new Date(dto.unloadingDate) : null,
+      grossWeight.toNumber(),
+      tareWeight.toNumber(),
+      weight.toNumber(),
+      rate.toNumber(),
+      gross.toNumber(),
+      companyCode,
+      dto.slipImage || null,
+    ];
+
+    try {
+      await this.db.query(insertTripSql, insertTripParams);
+    } catch (err: any) {
+      if (err?.code === 'ER_BAD_FIELD_ERROR' || err?.message?.includes('Unknown column')) {
+        try {
+          await this.db.rawQuery("ALTER TABLE trips ADD COLUMN company_code VARCHAR(30) NOT NULL DEFAULT 'RS_TRANSPORT'");
+          await this.db.rawQuery('ALTER TABLE trips ADD COLUMN slip_image LONGTEXT NULL');
+          await this.db.query(insertTripSql, insertTripParams);
+        } catch {
+          await this.db.query(
+            `INSERT INTO trips (
+              id, trip_no, dispatch_id, truck_id, destination_id, party_id,
+              transporter_id, unloading_date, gross_weight, tare_weight, net_weight, rate_per_unit, gross_freight
+             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+            [
+              id,
+              dto.tripNo,
+              dto.dispatchId || null,
+              dto.truckId,
+              dto.destinationId || null,
+              dto.partyId || null,
+              dto.transporterId || null,
+              dto.unloadingDate ? new Date(dto.unloadingDate) : null,
+              grossWeight.toNumber(),
+              tareWeight.toNumber(),
+              weight.toNumber(),
+              rate.toNumber(),
+              gross.toNumber(),
+            ],
+          );
+        }
+      } else {
+        throw err;
+      }
+    }
 
     // If trip is created from a dispatch, automatically link only UNLINKED fuel issued specifically for this truck
     if (dto.dispatchId) {

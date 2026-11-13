@@ -80,7 +80,7 @@ export const Sidebar: React.FC = () => {
 
       {/* Responsive Sidebar */}
       <aside
-        className={`fixed top-0 bottom-0 left-0 z-50 w-72 bg-slate-800 text-slate-100 flex flex-col shrink-0 border-r border-slate-700 shadow-xl lg:shadow-md lg:static lg:h-screen lg:top-0 lg:translate-x-0 transition-transform duration-300 ease-in-out ${
+        className={`fixed top-0 bottom-0 left-0 z-50 w-72 bg-slate-800 text-slate-100 flex flex-col shrink-0 border-r border-slate-700 shadow-xl lg:shadow-md lg:static lg:h-screen lg:top-0 lg:translate-x-0 transition-transform duration-300 ease-in-out [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >

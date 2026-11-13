@@ -5,7 +5,7 @@ WORKDIR /app
 
 # Install build dependencies
 COPY package*.json tsconfig*.json ./
-RUN npm ci --legacy-peer-deps
+RUN npm install --legacy-peer-deps
 
 # Copy source code and SQL migrations
 COPY src/ ./src/
@@ -23,7 +23,7 @@ ENV NODE_ENV=production
 
 # Install only production dependencies
 COPY package*.json ./
-RUN npm ci --omit=dev --legacy-peer-deps && npm cache clean --force
+RUN npm install --omit=dev --legacy-peer-deps && npm cache clean --force
 
 # Copy built application and migrations from builder
 COPY --from=builder /app/dist ./dist
