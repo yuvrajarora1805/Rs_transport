@@ -5,6 +5,7 @@ interface SingleTruckPayload {
   truckId: string;
   bales?: string;
   driverMobile?: string;
+  slipImage?: string;
 }
 
 interface CommonPayload {
@@ -41,6 +42,7 @@ export async function submitDispatch({
       truckId: r.truckId,
       bales: r.bales ? Number(r.bales) : undefined,
       driverMobile: r.driverMobile || undefined,
+      slipImage: r.slipImage || undefined,
       companyCode,
     }));
     await apiFetch('/dispatches', { method: 'POST', body: JSON.stringify(payload) });
@@ -57,6 +59,7 @@ export async function submitDispatch({
         truckId: singleTruck.truckId,
         bales: singleTruck.bales ? Number(singleTruck.bales) : undefined,
         driverMobile: singleTruck.driverMobile || undefined,
+        slipImage: singleTruck.slipImage || undefined,
         companyCode,
       }),
     });

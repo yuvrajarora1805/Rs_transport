@@ -12,6 +12,7 @@ interface MultiTruckListSectionProps {
   onAddRow: () => void;
   onRemoveRow: (id: string) => void;
   onRowChange: (id: string, field: keyof MultiTruckRow, value: string) => void;
+  onImageFile: (file?: File, cb?: (img: string) => void) => void;
 }
 
 export function MultiTruckListSection({
@@ -21,13 +22,14 @@ export function MultiTruckListSection({
   onAddRow,
   onRemoveRow,
   onRowChange,
+  onImageFile,
 }: MultiTruckListSectionProps) {
   return (
     <div className="space-y-4 pt-4 border-t border-slate-200">
       <div className="flex items-center justify-between">
         <div>
           <h4 className="text-sm font-bold text-slate-900">Trucks in this Dispatch</h4>
-          <p className="text-xs text-slate-500">Add multiple trucks assigned to this order</p>
+          <p className="text-xs text-slate-500">Each truck has its own registration, bales and dispatch slip</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -56,6 +58,7 @@ export function MultiTruckListSection({
             canRemove={multiTrucks.length > 1}
             onChange={(f, v) => onRowChange(row.id, f, v)}
             onRemove={() => onRemoveRow(row.id)}
+            onImageUpload={(file) => onImageFile(file, (img) => onRowChange(row.id, 'slipImage', img))}
           />
         ))}
       </div>

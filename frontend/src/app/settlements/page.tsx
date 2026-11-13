@@ -75,7 +75,7 @@ export default function SettlementsPage() {
       key: 'actions', header: 'Action',
       render: (row) => {
         const out = Number(row.outstanding || (row as any).outstanding);
-        const slip = (row as any).slip_image || (row as any).trip_slip_image;
+        const slip = (row as any).slip_image;
         return (
           <div className="flex items-center gap-2">
             {slip && (

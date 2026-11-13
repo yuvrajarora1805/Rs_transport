@@ -92,7 +92,7 @@ export class SettlementsService {
 
   async findAll(status?: string, companyCode?: string) {
     let sql = `
-      SELECT s.*, t.trip_no, t.unloading_date, t.slip_image as trip_slip_image, trk.truck_no, trk.owner_name,
+      SELECT s.*, t.trip_no, t.unloading_date, trk.truck_no, trk.owner_name,
              d.name as destination_name, p.name as party_name, transp.name as transporter_name
       FROM settlements s
       JOIN trips t ON s.trip_id = t.id
@@ -113,28 +113,12 @@ export class SettlementsService {
     }
 
     sql += ` ORDER BY s.created_at DESC`;
-    try {
-      const res = await this.db.query(sql, params);
-      return res.rows;
-    } catch (err: any) {
-      if (err?.message?.includes('slip_image') || err?.code === 'ER_BAD_FIELD_ERROR') {
-        try {
-          await this.db.rawQuery('ALTER TABLE trips ADD COLUMN slip_image LONGTEXT NULL');
-          await this.db.rawQuery('ALTER TABLE settlements ADD COLUMN slip_image LONGTEXT NULL');
-          const retryRes = await this.db.query(sql, params);
-          return retryRes.rows;
-        } catch {
-          const fallbackSql = sql.replace('t.slip_image as trip_slip_image,', '');
-          const fallbackRes = await this.db.query(fallbackSql, params);
-          return fallbackRes.rows;
-        }
-      }
-      throw err;
-    }
+    const res = await this.db.query(sql, params);
+    return res.rows;
   }
 
   async findOne(id: string) {
-    let querySql = `SELECT s.*, t.trip_no, t.unloading_date, t.slip_image as trip_slip_image, trk.truck_no, trk.owner_name,
+    const querySql = `SELECT s.*, t.trip_no, t.unloading_date, trk.truck_no, trk.owner_name,
               d.name as destination_name, p.name as party_name, transp.name as transporter_name
        FROM settlements s
        JOIN trips t ON s.trip_id = t.id
@@ -144,23 +128,7 @@ export class SettlementsService {
        LEFT JOIN transporters transp ON t.transporter_id = transp.id
        WHERE s.id = ?`;
 
-    let res: any;
-    try {
-      res = await this.db.query(querySql, [id]);
-    } catch (err: any) {
-      if (err?.message?.includes('slip_image') || err?.code === 'ER_BAD_FIELD_ERROR') {
-        try {
-          await this.db.rawQuery('ALTER TABLE trips ADD COLUMN slip_image LONGTEXT NULL');
-          await this.db.rawQuery('ALTER TABLE settlements ADD COLUMN slip_image LONGTEXT NULL');
-          res = await this.db.query(querySql, [id]);
-        } catch {
-          const fallbackSql = querySql.replace('t.slip_image as trip_slip_image,', '');
-          res = await this.db.query(fallbackSql, [id]);
-        }
-      } else {
-        throw err;
-      }
-    }
+    const res = await this.db.query(querySql, [id]);
     if (res.rows.length === 0) {
       throw new NotFoundException(`Settlement ID ${id} not found`);
     }

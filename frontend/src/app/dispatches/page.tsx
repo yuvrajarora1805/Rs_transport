@@ -7,7 +7,7 @@ import { Badge } from '../../components/ui/Badge';
 import { apiFetch, formatDate } from '../../lib/api';
 import { Dispatch, Source } from '../../types';
 import { useCompany } from '../../context/CompanyContext';
-import { PlusCircle, Filter, Send, Navigation, Truck, Building2, ArrowUpRight, Trash2 } from 'lucide-react';
+import { PlusCircle, Filter, Send, Navigation, Truck, Building2, ArrowUpRight, Trash2, Image as ImageIcon } from 'lucide-react';
 import { ConfirmDeleteModal } from '../../components/ui/ConfirmDeleteModal';
 import Link from 'next/link';
 
@@ -19,6 +19,7 @@ export default function DispatchesPage() {
   const [loading, setLoading] = useState(true);
   const [deleteTarget, setDeleteTarget] = useState<Dispatch | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   const totalBales = dispatches.reduce((acc, d) => acc + (Number(d.bales) || 0), 0);
   const uniqueTrucks = new Set(dispatches.map((d) => d.truckId || (d as any).truck_id).filter(Boolean)).size;
@@ -113,9 +114,21 @@ export default function DispatchesPage() {
     {
       key: 'actions', header: 'Action',
       render: (row) => (
-        <button type="button" onClick={() => setDeleteTarget(row)} className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors" title="Delete Dispatch">
-          <Trash2 size={15} />
-        </button>
+        <div className="flex items-center gap-1.5">
+          {(row as any).slip_image && (
+            <button
+              type="button"
+              onClick={() => setPreviewImage((row as any).slip_image)}
+              className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
+              title="View Dispatch Slip"
+            >
+              <ImageIcon size={15} />
+            </button>
+          )}
+          <button type="button" onClick={() => setDeleteTarget(row)} className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors" title="Delete Dispatch">
+            <Trash2 size={15} />
+          </button>
+        </div>
       ),
     },
   ];
@@ -138,70 +151,26 @@ export default function DispatchesPage() {
       <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 w-full">
         {/* Navigation / Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between">
-            <div>
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Total Dispatches</p>
-              <h3 className="text-2xl font-black text-slate-900 mt-1">{dispatches.length}</h3>
-              <p className="text-xs text-slate-400 mt-0.5">{totalBales.toLocaleString()} total bales</p>
-            </div>
-            <div className="w-12 h-12 rounded-xl bg-blue-50 border border-blue-200 text-blue-600 flex items-center justify-center">
-              <Send size={22} />
-            </div>
-          </div>
-
-          <Link
-            href="/masters/trucks"
-            className="group bg-white p-5 rounded-2xl border border-slate-200 shadow-xs hover:border-blue-400 hover:shadow-md transition-all flex items-center justify-between"
-          >
-            <div>
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider group-hover:text-blue-600 transition-colors">
-                Trucks Active
-              </p>
-              <h3 className="text-2xl font-black text-slate-900 mt-1">{uniqueTrucks}</h3>
-              <p className="text-xs text-blue-600 font-semibold flex items-center gap-1 mt-0.5">
-                View Truck Master <ArrowUpRight size={13} />
-              </p>
-            </div>
-            <div className="w-12 h-12 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-600 group-hover:bg-blue-50 group-hover:border-blue-200 group-hover:text-blue-600 flex items-center justify-center transition-colors">
-              <Truck size={22} />
-            </div>
-          </Link>
-
-          <Link
-            href="/masters/sources"
-            className="group bg-white p-5 rounded-2xl border border-slate-200 shadow-xs hover:border-blue-400 hover:shadow-md transition-all flex items-center justify-between"
-          >
-            <div>
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider group-hover:text-blue-600 transition-colors">
-                Booking Sources
-              </p>
-              <h3 className="text-2xl font-black text-slate-900 mt-1">{uniqueSources || sources.length}</h3>
-              <p className="text-xs text-blue-600 font-semibold flex items-center gap-1 mt-0.5">
-                View Sources Master <ArrowUpRight size={13} />
-              </p>
-            </div>
-            <div className="w-12 h-12 rounded-xl bg-purple-50 border border-purple-200 text-purple-600 group-hover:bg-blue-50 group-hover:border-blue-200 group-hover:text-blue-600 flex items-center justify-center transition-colors">
-              <Building2 size={22} />
-            </div>
-          </Link>
-
-          <Link
-            href="/trips"
-            className="group bg-white p-5 rounded-2xl border border-slate-200 shadow-xs hover:border-blue-400 hover:shadow-md transition-all flex items-center justify-between"
-          >
-            <div>
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider group-hover:text-blue-600 transition-colors">
-                Trips & Freight
-              </p>
-              <h3 className="text-2xl font-black text-slate-900 mt-1">Trips Register</h3>
-              <p className="text-xs text-blue-600 font-semibold flex items-center gap-1 mt-0.5">
-                Go to Weighbridge <ArrowUpRight size={13} />
-              </p>
-            </div>
-            <div className="w-12 h-12 rounded-xl bg-amber-50 border border-amber-200 text-amber-600 group-hover:bg-blue-50 group-hover:border-blue-200 group-hover:text-blue-600 flex items-center justify-center transition-colors">
-              <Navigation size={22} />
-            </div>
-          </Link>
+          {[
+            { label: 'Total Dispatches', val: dispatches.length, sub: `${totalBales.toLocaleString()} total bales`, icon: <Send size={22} className="text-blue-600" /> },
+            { label: 'Trucks Active', val: uniqueTrucks, sub: 'View Truck Master →', href: '/masters/trucks', icon: <Truck size={22} className="text-emerald-600" /> },
+            { label: 'Booking Sources', val: uniqueSources || sources.length, sub: 'View Sources Master →', href: '/masters/sources', icon: <Building2 size={22} className="text-purple-600" /> },
+            { label: 'Trips & Freight', val: 'Weighbridge', sub: 'Go to Trips Register →', href: '/trips', icon: <Navigation size={22} className="text-amber-600" /> },
+          ].map((c, i) => {
+            const inner = (
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex items-center justify-between hover:border-blue-400 transition-all h-full">
+                <div>
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">{c.label}</p>
+                  <h3 className="text-2xl font-black text-slate-900 mt-1">{c.val}</h3>
+                  <p className="text-xs text-blue-600 font-semibold mt-0.5">{c.sub}</p>
+                </div>
+                <div className="w-12 h-12 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-center shrink-0">
+                  {c.icon}
+                </div>
+              </div>
+            );
+            return c.href ? <Link key={i} href={c.href} className="group">{inner}</Link> : <div key={i}>{inner}</div>;
+          })}
         </div>
 
         {/* Source Filter Bar */}
@@ -243,6 +212,21 @@ export default function DispatchesPage() {
         message="Are you sure you want to delete this dispatch entry? This will permanently remove the record from dispatch registers."
         itemName={deleteTarget ? `${deleteTarget.truck?.truckNo || (deleteTarget as any).truck_no || 'Truck'} • SR #${deleteTarget.srNo || (deleteTarget as any).sr_no || 'N/A'}` : undefined}
       />
+
+      {/* Dispatch Slip Preview Modal */}
+      {previewImage && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70" onClick={() => setPreviewImage(null)}>
+          <div className="bg-white rounded-2xl max-w-lg w-full p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+              <span className="font-bold text-sm text-slate-800">Dispatch Slip Preview</span>
+              <button onClick={() => setPreviewImage(null)} className="p-1 text-slate-400 hover:text-slate-600 rounded-lg">✕</button>
+            </div>
+            <div className="p-3 flex justify-center">
+              <img src={previewImage} alt="Dispatch Slip" className="max-h-[65vh] rounded-xl object-contain border border-slate-200" />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

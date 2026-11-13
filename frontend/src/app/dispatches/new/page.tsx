@@ -27,10 +27,10 @@ export default function NewDispatchPage() {
   const [error, setError] = useState<string | null>(null);
   const [isMultiMode, setIsMultiMode] = useState(false);
   const [commonForm, setCommonForm] = useState({ date: '', srNo: '', sourceId: '', destination: '', remarks: '' });
-  const [singleTruck, setSingleTruck] = useState({ truckId: '', bales: '', driverMobile: '' });
+  const [singleTruck, setSingleTruck] = useState({ truckId: '', bales: '', driverMobile: '', slipImage: '' });
   const [multiTrucks, setMultiTrucks] = useState<MultiTruckRow[]>([
-    { id: 'row-1', truckId: '', bales: '', driverMobile: '' },
-    { id: 'row-2', truckId: '', bales: '', driverMobile: '' },
+    { id: 'row-1', truckId: '', bales: '', driverMobile: '', slipImage: '' },
+    { id: 'row-2', truckId: '', bales: '', driverMobile: '', slipImage: '' },
   ]);
 
   const {
@@ -58,6 +58,14 @@ export default function NewDispatchPage() {
     setMultiTrucks((prev) =>
       prev.map((r) => (r.id === id ? { ...r, [field]: value } : r))
     );
+  };
+
+  const handleImageFile = (file?: File, cb?: (img: string) => void) => {
+    if (!file) return;
+    if (file.size > 5 * 1024 * 1024) return setError('Slip image must be under 5MB');
+    const reader = new FileReader();
+    reader.onloadend = () => cb?.(reader.result as string);
+    reader.readAsDataURL(file);
   };
 
   const handleSubmit = async (e?: React.FormEvent) => {
@@ -123,7 +131,7 @@ export default function NewDispatchPage() {
                   <h3 className="text-sm font-bold text-slate-900">
                     {isMultiMode ? `Assigned Fleet (${multiTrucks.length} Trucks)` : 'Vehicle Assignment'}
                   </h3>
-                  <p className="text-xs text-slate-500">Record truck registration, bales count & driver contact details</p>
+                  <p className="text-xs text-slate-500">Record truck registration, bales count & attach individual dispatch slip</p>
                 </div>
               </div>
 
@@ -132,14 +140,16 @@ export default function NewDispatchPage() {
                   form={singleTruck} trucks={trucks}
                   onChange={(f, v) => setSingleTruck((prev) => ({ ...prev, [f]: v }))}
                   onOpenAddTruck={() => { setModalError(null); setModals((m) => ({ ...m, truck: true })); }}
+                  onImageUpload={(file) => handleImageFile(file, (img) => setSingleTruck((s) => ({ ...s, slipImage: img })))}
                 />
               ) : (
                 <MultiTruckListSection
                   multiTrucks={multiTrucks} trucks={trucks}
                   onOpenAddTruck={() => { setModalError(null); setModals((m) => ({ ...m, truck: true })); }}
-                  onAddRow={() => setMultiTrucks((prev) => [...prev, { id: `row-${Date.now()}`, truckId: '', bales: '', driverMobile: '' }])}
+                  onAddRow={() => setMultiTrucks((prev) => [...prev, { id: `row-${Date.now()}`, truckId: '', bales: '', driverMobile: '', slipImage: '' }])}
                   onRemoveRow={(id) => setMultiTrucks((prev) => prev.filter((r) => r.id !== id))}
                   onRowChange={handleMultiRowChange}
+                  onImageFile={handleImageFile}
                 />
               )}
             </div>
