@@ -1,5 +1,7 @@
 import type { NextConfig } from "next";
 
+const BACKEND_URL = process.env.BACKEND_INTERNAL_URL || 'http://backend:4000';
+
 const nextConfig: NextConfig = {
   turbopack: {
     rules: {
@@ -9,17 +11,17 @@ const nextConfig: NextConfig = {
       },
     },
   },
-  // Allow requests from LAN IP and tunnel domain during dev
   allowedDevOrigins: [
     "192.168.1.12",
     "rs.yarora.dev",
+    "rs.omvky.com",
     "*.yarora.dev",
   ],
   async rewrites() {
     return [
       {
         source: '/api/backend/:path*',
-        destination: `${process.env.BACKEND_INTERNAL_URL || 'http://127.0.0.1:4000'}/:path*`,
+        destination: `${BACKEND_URL}/:path*`,
       },
     ];
   },
