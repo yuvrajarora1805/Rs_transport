@@ -1,0 +1,97 @@
+version: '3.8'
+
+services:
+  # 1. Relational Database (MySQL 8.0)
+  mysql:
+    image: mysql:8.0
+    container_name: rs_transport_mysql
+    restart: always
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --max_allowed_packet=64M
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-rs_erp_secure_pass_2026}
+      MYSQL_DATABASE: ${DB_NAME:-rs_transport_db}
+    ports:
+      - "${HOST_DB_PORT:-3306}:3306"
+    volumes:
+      - rs_mysql_data:/var/lib/mysql
+      - ./backend/sql/schema_mysql.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -u root -p$$MYSQL_ROOT_PASSWORD"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    networks:
+      - rs_erp_network
+
+  # 2. NestJS Backend API
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: rs_transport_backend
+    restart: always
+    depends_on:
+      mysql:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 4000
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: root
+      DB_PASSWORD: ${DB_PASSWORD:-rs_erp_secure_pass_2026}
+      DB_NAME: ${DB_NAME:-rs_transport_db}
+      JWT_SECRET: ${JWT_SECRET:-rs-transport-erp-super-secret-key-2026}
+      JWT_EXPIRES_IN: 30d
+      CORS_ORIGIN: "*"
+    ports:
+      - "${HOST_BACKEND_PORT:-4000}:4000"
+    networks:
+      - rs_erp_network
+
+  # 3. Next.js Enterprise Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: rs_transport_frontend
+    restart: always
+    depends_on:
+      - backend
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: "0.0.0.0"
+      BACKEND_INTERNAL_URL: "http://backend:4000/:path*"
+      NEXT_PUBLIC_API_URL: "/api/backend"
+    ports:
+      - "${HOST_FRONTEND_PORT:-3000}:3000"
+    networks:
+      - rs_erp_network
+
+  # 4. Optional Cloudflare Tunnel (Run with: docker compose --profile tunnel up -d)
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: rs_transport_tunnel
+    restart: unless-stopped
+    profiles:
+      - tunnel
+    environment:
+      TUNNEL_TOKEN: ${CLOUDFLARE_TUNNEL_TOKEN:-}
+    command: tunnel --no-autoupdate run
+    networks:
+      - rs_erp_network
+
+volumes:
+  rs_mysql_data:
+    name: rs_transport_mysql_data
+
+networks:
+  rs_erp_network:
+    name: rs_transport_network
+    driver: bridge
