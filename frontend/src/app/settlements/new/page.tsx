@@ -28,31 +28,37 @@ function SettlementForm() {
     slipImage: '',
   });
 
-  const handleTripChange = async (id: string) => {
+  const handleTripChange = async (id: string, tripList: Trip[] = trips) => {
     setForm((f) => ({ ...f, tripId: id }));
-    const found = trips.find((t) => t.id === id) || null;
-    setSelectedTrip(found);
+    const found = tripList.find((t) => t.id === id) || null;
+    if (found) setSelectedTrip(found);
     if (id) {
       try {
         const details = await apiFetch<any>(`/trips/${id}`);
-        if (details?.fuelRecords && Array.isArray(details.fuelRecords)) {
-          const totalFuel = details.fuelRecords.reduce((acc: number, f: any) => acc + Number(f.amount || 0), 0);
-          if (totalFuel > 0) setForm((prev) => ({ ...prev, dieselAmount: totalFuel.toFixed(2) }));
+        if (details) {
+          setSelectedTrip((prev) => ({ ...(found || {}), ...prev, ...details }));
+          if (details?.fuelRecords && Array.isArray(details.fuelRecords)) {
+            const totalFuel = details.fuelRecords.reduce((acc: number, f: any) => acc + Number(f.amount || 0), 0);
+            if (totalFuel > 0) setForm((prev) => ({ ...prev, dieselAmount: totalFuel.toFixed(2) }));
+          }
+          if (details?.advances && Array.isArray(details.advances)) {
+            const totalAdv = details.advances.reduce((acc: number, a: any) => acc + Number(a.amount || 0), 0);
+            if (totalAdv > 0) setForm((prev) => ({ ...prev, advanceAmount: totalAdv.toFixed(2) }));
+          }
         }
       } catch (e) {}
+    } else {
+      setSelectedTrip(null);
     }
   };
 
   useEffect(() => {
     apiFetch<Trip[]>('/trips')
       .then((res) => {
-        setTrips(res || []);
+        const list = res || [];
+        setTrips(list);
         if (tripIdParam) {
-          const matched = res?.find((t) => t.id === tripIdParam);
-          if (matched) {
-            setSelectedTrip(matched);
-            handleTripChange(tripIdParam);
-          }
+          handleTripChange(tripIdParam, list);
         }
       })
       .catch((err) => setError(err.message));
@@ -67,7 +73,10 @@ function SettlementForm() {
     reader.readAsDataURL(file);
   };
 
-  const gross = selectedTrip ? Number(selectedTrip.grossFreight || (selectedTrip as any).gross_freight) : 0;
+  const rawGross = selectedTrip ? Number(selectedTrip.grossFreight ?? (selectedTrip as any).gross_freight ?? 0) : 0;
+  const netWt = selectedTrip ? Number(selectedTrip.netWeight ?? (selectedTrip as any).net_weight ?? 0) : 0;
+  const rate = selectedTrip ? Number(selectedTrip.ratePerUnit ?? (selectedTrip as any).rate_per_unit ?? 0) : 0;
+  const gross = rawGross > 0 ? rawGross : (netWt > 0 && rate > 0 ? netWt * rate : 0);
   const advance = Number(form.advanceAmount) || 0;
   const diesel = Number(form.dieselAmount) || 0;
   const comm = Number(form.commission) || 0;

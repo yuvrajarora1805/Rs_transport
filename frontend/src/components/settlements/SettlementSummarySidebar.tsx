@@ -101,21 +101,36 @@ export function SettlementSummarySidebar({
               <span className="font-semibold">- {formatCurrency(other)}</span>
             </div>
           )}
-          <div className="flex justify-between py-2 bg-emerald-50/70 px-3 rounded-xl">
-            <span className="text-emerald-900 font-bold">Net Payable:</span>
-            <span className="text-lg font-black text-emerald-700">{formatCurrency(netPayable)}</span>
+          <div className={`flex justify-between py-2 px-3 rounded-xl ${netPayable < 0 ? 'bg-rose-50/80' : 'bg-emerald-50/70'}`}>
+            <span className={`font-bold ${netPayable < 0 ? 'text-rose-900' : 'text-emerald-900'}`}>
+              {netPayable < 0 ? 'Balance (Excess Diesel):' : 'Net Payable:'}
+            </span>
+            <span className={`text-lg font-black ${netPayable < 0 ? 'text-rose-700' : 'text-emerald-700'}`}>
+              {netPayable < 0 ? `- ${formatCurrency(Math.abs(netPayable))}` : formatCurrency(netPayable)}
+            </span>
           </div>
         </div>
       </div>
 
-      <div className="bg-blue-50/60 rounded-2xl border border-blue-100 p-6 text-xs text-blue-900 space-y-2">
-        <p className="font-bold text-sm text-blue-950 flex items-center gap-1.5">
-          <FileCheck size={16} className="text-blue-600" /> Payment Link
-        </p>
-        <p className="leading-relaxed">
-          Once finalized, this amount appears under <strong>Outstanding Ledger</strong> until payment vouchers are issued under <strong>Payments</strong>.
-        </p>
-      </div>
+      {netPayable < 0 ? (
+        <div className="bg-amber-50/80 rounded-2xl border border-amber-200 p-5 text-xs text-amber-900 space-y-2">
+          <p className="font-bold text-sm text-amber-950 flex items-center gap-1.5">
+            <FileCheck size={16} className="text-amber-600" /> Overdrawn Advance / Excess Diesel
+          </p>
+          <p className="leading-relaxed">
+            Deductions exceed freight earnings. The balance of <strong>{formatCurrency(Math.abs(netPayable))}</strong> is recoverable from the transporter or will be adjusted against subsequent trips.
+          </p>
+        </div>
+      ) : (
+        <div className="bg-blue-50/60 rounded-2xl border border-blue-100 p-6 text-xs text-blue-900 space-y-2">
+          <p className="font-bold text-sm text-blue-950 flex items-center gap-1.5">
+            <FileCheck size={16} className="text-blue-600" /> Payment Link
+          </p>
+          <p className="leading-relaxed">
+            Once finalized, this amount appears under <strong>Outstanding Ledger</strong> until payment vouchers are issued under <strong>Payments</strong>.
+          </p>
+        </div>
+      )}
 
       {/* Slip Modal */}
       {showSlipModal && (selectedTrip as any)?.slip_image && (

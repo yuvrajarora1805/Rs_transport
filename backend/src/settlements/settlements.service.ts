@@ -20,7 +20,10 @@ export class SettlementsService {
       throw new ConflictException(`Settlement for trip ${trip.trip_no} already exists`);
     }
 
-    const gross = new Decimal(trip.gross_freight);
+    let gross = new Decimal(trip.gross_freight || 0);
+    if (gross.isZero() && trip.net_weight && trip.rate_per_unit) {
+      gross = new Decimal(trip.net_weight).mul(new Decimal(trip.rate_per_unit)).toDecimalPlaces(2);
+    }
     const advance = new Decimal(dto.advanceAmount || 0);
     const diesel = new Decimal(dto.dieselAmount || 0);
     const commission = new Decimal(dto.commission || 0);
@@ -28,6 +31,7 @@ export class SettlementsService {
 
     const totalDeductions = advance.add(diesel).add(commission).add(other);
     const netPayable = gross.sub(totalDeductions);
+    const status = netPayable.isNegative() ? 'OVERDRAWN' : 'APPROVED';
 
     const id = uuidv4();
     const companyCode = trip.company_code || 'RS_TRANSPORT';
@@ -47,7 +51,7 @@ export class SettlementsService {
       netPayable.toNumber(),
       0,
       netPayable.toNumber(),
-      'APPROVED',
+      status,
       companyCode,
       dto.slipImage || null,
     ];
@@ -78,7 +82,7 @@ export class SettlementsService {
               netPayable.toNumber(),
               0,
               netPayable.toNumber(),
-              'APPROVED',
+              status,
             ],
           );
         }

@@ -208,7 +208,7 @@ export class TripsService {
     const [fuel, advances, settlement] = await Promise.all([
       this.db.query(
         `SELECT f.*, p.name as pump_name FROM fuel_transactions f
-         JOIN pumps p ON f.pump_id = p.id
+         LEFT JOIN pumps p ON f.pump_id = p.id
          WHERE f.trip_id = ?`,
         [id],
       ),

@@ -116,7 +116,7 @@ export interface Settlement {
   slip_image?: string;
   trip_slip_image?: string;
   transporter_name?: string;
-  status: 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'PARTIALLY_PAID' | 'PAID' | 'OVERPAID';
+  status: 'DRAFT' | 'PENDING_APPROVAL' | 'APPROVED' | 'PARTIALLY_PAID' | 'PAID' | 'OVERPAID' | 'OVERDRAWN';
   trip?: Trip;
   payments?: Payment[];
 }

@@ -59,6 +59,9 @@ export default function SettlementsPage() {
       key: 'outstanding', header: 'Outstanding (₹)',
       render: (row) => {
         const out = Number(row.outstanding || (row as any).outstanding);
+        if (out < 0) {
+          return <span className="font-bold text-amber-600">- {formatCurrency(Math.abs(out))}</span>;
+        }
         return <span className={`font-bold ${out > 0 ? 'text-rose-600' : 'text-slate-400'}`}>{formatCurrency(out)}</span>;
       },
     },
@@ -66,8 +69,10 @@ export default function SettlementsPage() {
       key: 'status', header: 'Status',
       render: (row) => {
         const s = row.status || (row as any).status;
+        const out = Number(row.outstanding || (row as any).outstanding);
         if (s === 'PAID') return <Badge variant="success">PAID</Badge>;
         if (s === 'PARTIALLY_PAID') return <Badge variant="warning">PARTIAL</Badge>;
+        if (s === 'OVERDRAWN' || out < 0) return <Badge variant="warning">EXCESS DIESEL</Badge>;
         return <Badge variant="danger">PENDING</Badge>;
       },
     },
@@ -88,6 +93,10 @@ export default function SettlementsPage() {
               <Link href={`/payments/new?settlementId=${row.id}&outstanding=${out}`} className="text-xs font-semibold text-emerald-600 hover:underline">
                 Record Payment →
               </Link>
+            ) : out < 0 ? (
+              <span className="text-xs font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded-lg border border-amber-200">
+                Recoverable
+              </span>
             ) : (<span className="text-xs text-slate-400">Completed</span>)}
             <button type="button" onClick={() => setDeleteTarget(row)} className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors" title="Delete Settlement">
               <Trash2 size={15} />
