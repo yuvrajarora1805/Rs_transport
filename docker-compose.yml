@@ -13,7 +13,7 @@ services:
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:-rs_erp_secure_pass_2026}
       MYSQL_DATABASE: ${DB_NAME:-rs_transport_db}
     ports:
-      - "${HOST_DB_PORT:-3306}:3306"
+      - "${HOST_DB_PORT:-3312}:3306"
     volumes:
       - rs_mysql_data:/var/lib/mysql
       - ./backend/sql/schema_mysql.sql:/docker-entrypoint-initdb.d/01_schema.sql:ro
@@ -48,7 +48,7 @@ services:
       JWT_EXPIRES_IN: 30d
       CORS_ORIGIN: "*"
     ports:
-      - "${HOST_BACKEND_PORT:-4000}:4000"
+      - "${HOST_BACKEND_PORT:-4017}:4000"
     networks:
       - rs_erp_network
 
@@ -68,7 +68,7 @@ services:
       BACKEND_INTERNAL_URL: "http://backend:4000/:path*"
       NEXT_PUBLIC_API_URL: "/api/backend"
     ports:
-      - "${HOST_FRONTEND_PORT:-3000}:3000"
+      - "${HOST_FRONTEND_PORT:-3017}:3000"
     networks:
       - rs_erp_network
 
