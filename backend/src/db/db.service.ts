@@ -84,6 +84,7 @@ export class DbService implements OnModuleInit, OnModuleDestroy {
       'ALTER TABLE dispatches ADD COLUMN driver_mobile VARCHAR(20) NULL',
       "ALTER TABLE dispatches ADD COLUMN company_code VARCHAR(30) NOT NULL DEFAULT 'RS_TRANSPORT'",
       'ALTER TABLE dispatches ADD COLUMN slip_image LONGTEXT NULL',
+      "ALTER TABLE dispatches ADD COLUMN material VARCHAR(100) NOT NULL DEFAULT 'Cotton Bales'",
       'ALTER TABLE parties ADD COLUMN destination_id VARCHAR(36) NULL',
       'ALTER TABLE trips ADD COLUMN gross_weight DECIMAL(10, 3) NOT NULL DEFAULT 0.000',
       'ALTER TABLE trips ADD COLUMN tare_weight DECIMAL(10, 3) NOT NULL DEFAULT 0.000',

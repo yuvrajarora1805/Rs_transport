@@ -69,9 +69,11 @@ export interface Dispatch {
   truckId: string;
   sourceId: string;
   bales?: number;
+  material?: string;
   destination?: string;
   remarks?: string;
   driverMobile?: string;
+  slip_image?: string;
   truck?: Truck;
   source?: Source;
 }

@@ -1,14 +1,15 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Header } from '../../components/layout/Header';
 import { DataTable, Column } from '../../components/ui/DataTable';
-import { Badge } from '../../components/ui/Badge';
 import { apiFetch, formatDate } from '../../lib/api';
 import { Dispatch, Source } from '../../types';
 import { useCompany } from '../../context/CompanyContext';
-import { PlusCircle, Filter, Send, Navigation, Truck, Building2, ArrowUpRight, Trash2, Image as ImageIcon } from 'lucide-react';
+import { PlusCircle, Filter, Send, Navigation, Truck, Building2, Trash2 } from 'lucide-react';
 import { ConfirmDeleteModal } from '../../components/ui/ConfirmDeleteModal';
+import { groupDispatchesByOrder, GroupedDispatchOrder } from '../../components/dispatches/dispatchGrouping';
+import { DispatchFleetRow } from '../../components/dispatches/DispatchFleetRow';
 import Link from 'next/link';
 
 export default function DispatchesPage() {
@@ -49,6 +50,8 @@ export default function DispatchesPage() {
     loadData();
   }, [selectedSource, activeCompany.code]);
 
+  const groupedOrders = useMemo(() => groupDispatchesByOrder(dispatches), [dispatches]);
+
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setDeleteLoading(true);
@@ -63,72 +66,73 @@ export default function DispatchesPage() {
     }
   };
 
-  const columns: Column<Dispatch>[] = [
+  const columns: Column<GroupedDispatchOrder>[] = [
     { key: 'date', header: 'Date', render: (row) => formatDate(row.date) },
-    { key: 'srNo', header: 'SR No', render: (row) => row.srNo || (row as any).sr_no || '-' },
     {
-      key: 'truckNo', header: 'Truck No',
-      render: (row) => {
-        const tId = row.truckId || (row as any).truck_id;
-        const tNo = row.truck?.truckNo || (row as any).truck_no || '-';
-        return tId ? <Link href={`/masters/trucks/${tId}`} className="font-bold text-blue-600 hover:underline">{tNo}</Link> : <span className="font-semibold text-slate-900">{tNo}</span>;
-      },
+      key: 'srNo', header: 'SR / Ref',
+      render: (row) => (
+        <div>
+          <span className="font-bold text-slate-900">{row.srNo || '-'}</span>
+          {row.trucks.length > 1 && (
+            <span className="ml-1.5 px-2 py-0.5 text-[10px] font-black bg-blue-100 text-blue-700 rounded-md">
+              {row.trucks.length} Trucks
+            </span>
+          )}
+        </div>
+      ),
     },
     {
-      key: 'source', header: 'Source',
-      render: (row) => {
-        const sId = row.sourceId || (row as any).source_id;
-        const sName = row.source?.name || (row as any).source_name || '-';
-        return sId ? <Link href={`/masters/sources/${sId}`} className="font-medium text-slate-800 hover:text-blue-600 hover:underline">{sName}</Link> : sName;
-      },
+      key: 'material', header: 'Commodity',
+      render: (row) => (
+        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-slate-100 text-slate-700">
+          {row.material || 'Cotton Bales'}
+        </span>
+      ),
     },
-    { key: 'destination', header: 'Destination' },
-    { key: 'bales', header: 'Bales' },
-    { key: 'mobileNo', header: 'Driver / Mobile', render: (row) => (row as any).mobile_no || row.truck?.mobileNo || '-' },
     {
-      key: 'status', header: 'Loading & Weighing',
+      key: 'destination', header: 'Source & Destination',
+      render: (row) => (
+        <div className="text-xs">
+          <div className="font-bold text-slate-900">{row.sourceName}</div>
+          <div className="text-slate-500 font-medium">→ {row.destination || 'Unassigned'}</div>
+        </div>
+      ),
+    },
+    {
+      key: 'trucks', header: 'Assigned Fleet & Dharamkanta Loading',
+      render: (row) => (
+        <div className="space-y-1.5 py-1 min-w-[320px]">
+          {row.trucks.map((t, idx) => (
+            <DispatchFleetRow
+              key={t.id}
+              truck={t}
+              order={row}
+              index={idx}
+              isMulti={row.trucks.length > 1}
+              onPreviewSlip={(url) => setPreviewImage(url)}
+            />
+          ))}
+        </div>
+      ),
+    },
+    {
+      key: 'totalBales', header: 'Total Qty',
       render: (row) => {
-        const tripId = (row as any).trip_id;
-        const tripNo = (row as any).trip_no;
-        const netWeight = (row as any).loaded_weight;
-        if (tripId) {
-          return (
-            <div className="flex flex-col items-start gap-0.5">
-              <Badge variant="success">✓ Loaded</Badge>
-              <Link href="/trips" className="text-[11px] font-bold text-blue-600 hover:underline">
-                Trip #{tripNo} {netWeight ? `(${Number(netWeight).toFixed(2)} MT)` : ''}
-              </Link>
-            </div>
-          );
-        }
-        return (
-          <Link
-            href={`/trips/new?dispatchId=${row.id}&truckId=${row.truckId || (row as any).truck_id || ''}&srNo=${encodeURIComponent(row.srNo || (row as any).sr_no || '')}&destination=${encodeURIComponent(row.destination || '')}`}
-            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-2xs"
-          >
-            + Record Loading →
-          </Link>
-        );
+        const unit = row.material?.toLowerCase().includes('rice') ? 'Bags' : 'Bales';
+        return <span className="font-bold text-slate-900 text-xs">{row.totalBales} {unit}</span>;
       },
     },
     {
       key: 'actions', header: 'Action',
       render: (row) => (
-        <div className="flex items-center gap-1.5">
-          {(row as any).slip_image && (
-            <button
-              type="button"
-              onClick={() => setPreviewImage((row as any).slip_image)}
-              className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg transition-colors"
-              title="View Dispatch Slip"
-            >
-              <ImageIcon size={15} />
-            </button>
-          )}
-          <button type="button" onClick={() => setDeleteTarget(row)} className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors" title="Delete Dispatch">
-            <Trash2 size={15} />
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setDeleteTarget(row.trucks[0]?.raw || null)}
+          className="p-1.5 text-rose-500 hover:text-rose-700 hover:bg-rose-50 rounded-lg transition-colors"
+          title="Delete Dispatch Entry"
+        >
+          <Trash2 size={15} />
+        </button>
       ),
     },
   ];
@@ -137,7 +141,7 @@ export default function DispatchesPage() {
     <div className="pb-12">
       <Header
         title="Dispatch Management"
-        subtitle="Source-wise Truck Bookings & Register"
+        subtitle="Source-wise Truck Bookings & Grouped Fleet Register"
         actions={
           <Link
             href="/dispatches/new"
@@ -149,11 +153,10 @@ export default function DispatchesPage() {
       />
 
       <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 w-full">
-        {/* Navigation / Metric Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {[
-            { label: 'Total Dispatches', val: dispatches.length, sub: `${totalBales.toLocaleString()} total bales`, icon: <Send size={22} className="text-blue-600" /> },
-            { label: 'Trucks Active', val: uniqueTrucks, sub: 'View Truck Master →', href: '/masters/trucks', icon: <Truck size={22} className="text-emerald-600" /> },
+            { label: 'Total Orders', val: groupedOrders.length, sub: `${totalBales.toLocaleString()} total units`, icon: <Send size={22} className="text-blue-600" /> },
+            { label: 'Fleet Active', val: uniqueTrucks, sub: 'View Truck Master →', href: '/masters/trucks', icon: <Truck size={22} className="text-emerald-600" /> },
             { label: 'Booking Sources', val: uniqueSources || sources.length, sub: 'View Sources Master →', href: '/masters/sources', icon: <Building2 size={22} className="text-purple-600" /> },
             { label: 'Trips & Freight', val: 'Weighbridge', sub: 'Go to Trips Register →', href: '/trips', icon: <Navigation size={22} className="text-amber-600" /> },
           ].map((c, i) => {
@@ -173,7 +176,6 @@ export default function DispatchesPage() {
           })}
         </div>
 
-        {/* Source Filter Bar */}
         <div className="flex items-center gap-4 bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
           <Filter size={18} className="text-slate-500" />
           <span className="text-sm font-bold text-slate-700">Filter by Source:</span>
@@ -184,25 +186,21 @@ export default function DispatchesPage() {
           >
             <option value="">All Booking Sources (6 Agents)</option>
             {sources.map((src) => (
-              <option key={src.id} value={src.id}>
-                {src.name}
-              </option>
+              <option key={src.id} value={src.id}>{src.name}</option>
             ))}
           </select>
         </div>
 
-        {/* Data Table */}
         <DataTable
           columns={columns}
-          data={dispatches}
+          data={groupedOrders}
           dateKey="date"
           searchKey="destination"
-          searchPlaceholder="Search destination..."
-          emptyMessage="No dispatches found for this source"
+          searchPlaceholder="Search destination or source..."
+          emptyMessage="No dispatches found"
         />
       </div>
 
-      {/* Delete Confirmation Modal */}
       <ConfirmDeleteModal
         isOpen={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
@@ -213,7 +211,6 @@ export default function DispatchesPage() {
         itemName={deleteTarget ? `${deleteTarget.truck?.truckNo || (deleteTarget as any).truck_no || 'Truck'} • SR #${deleteTarget.srNo || (deleteTarget as any).sr_no || 'N/A'}` : undefined}
       />
 
-      {/* Dispatch Slip Preview Modal */}
       {previewImage && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/70" onClick={() => setPreviewImage(null)}>
           <div className="bg-white rounded-2xl max-w-lg w-full p-4 shadow-2xl" onClick={(e) => e.stopPropagation()}>
@@ -230,4 +227,3 @@ export default function DispatchesPage() {
     </div>
   );
 }
-

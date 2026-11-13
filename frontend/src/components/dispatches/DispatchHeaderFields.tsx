@@ -9,12 +9,14 @@ interface DispatchHeaderFieldsProps {
   srNo: string;
   sourceId: string;
   destination: string;
+  material: string;
   sources: Source[];
   destinations: Destination[];
   onDateChange: (val: string) => void;
   onSrNoChange: (val: string) => void;
   onSourceChange: (val: string) => void;
   onDestChange: (val: string) => void;
+  onMaterialChange: (val: string) => void;
   onOpenAddSource: () => void;
   onOpenAddDest: () => void;
 }
@@ -24,12 +26,14 @@ export function DispatchHeaderFields({
   srNo,
   sourceId,
   destination,
+  material,
   sources,
   destinations,
   onDateChange,
   onSrNoChange,
   onSourceChange,
   onDestChange,
+  onMaterialChange,
   onOpenAddSource,
   onOpenAddDest,
 }: DispatchHeaderFieldsProps) {
@@ -107,6 +111,36 @@ export function DispatchHeaderFields({
               </option>
             ))}
           </select>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div>
+          <label className="block text-sm font-bold text-slate-800 mb-2">Commodity / Product *</label>
+          <div className="flex gap-2">
+            <select
+              value={['Cotton Bales', 'Rice', 'Paddy', 'Wheat', 'Mustard', 'Barseem'].includes(material) ? material : 'Other'}
+              onChange={(e) => {
+                if (e.target.value !== 'Other') onMaterialChange(e.target.value);
+              }}
+              className="w-1/2 h-11 px-4 text-base border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white"
+            >
+              <option value="Cotton Bales">Cotton Bales</option>
+              <option value="Rice">Rice</option>
+              <option value="Paddy">Paddy</option>
+              <option value="Wheat">Wheat</option>
+              <option value="Mustard">Mustard</option>
+              <option value="Barseem">Barseem</option>
+              <option value="Other">Custom Product...</option>
+            </select>
+            <input
+              type="text"
+              placeholder="e.g. Cotton Bales / Rice / Bags"
+              value={material}
+              onChange={(e) => onMaterialChange(e.target.value)}
+              className="w-1/2 h-11 px-4 text-base border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white"
+            />
+          </div>
         </div>
       </div>
     </>

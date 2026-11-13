@@ -26,7 +26,7 @@ export default function NewDispatchPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isMultiMode, setIsMultiMode] = useState(false);
-  const [commonForm, setCommonForm] = useState({ date: '', srNo: '', sourceId: '', destination: '', remarks: '' });
+  const [commonForm, setCommonForm] = useState({ date: '', srNo: '', sourceId: '', destination: '', remarks: '', material: 'Cotton Bales' });
   const [singleTruck, setSingleTruck] = useState({ truckId: '', bales: '', driverMobile: '', slipImage: '' });
   const [multiTrucks, setMultiTrucks] = useState<MultiTruckRow[]>([
     { id: 'row-1', truckId: '', bales: '', driverMobile: '', slipImage: '' },
@@ -114,11 +114,13 @@ export default function NewDispatchPage() {
 
               <DispatchHeaderFields
                 date={commonForm.date} srNo={commonForm.srNo} sourceId={commonForm.sourceId} destination={commonForm.destination}
+                material={commonForm.material}
                 sources={sources} destinations={destinations}
                 onDateChange={(v) => setCommonForm((f) => ({ ...f, date: v }))}
                 onSrNoChange={(v) => setCommonForm((f) => ({ ...f, srNo: v }))}
                 onSourceChange={(v) => setCommonForm((f) => ({ ...f, sourceId: v }))}
                 onDestChange={(v) => setCommonForm((f) => ({ ...f, destination: v }))}
+                onMaterialChange={(v) => setCommonForm((f) => ({ ...f, material: v }))}
                 onOpenAddSource={() => { setModalError(null); setModals((m) => ({ ...m, source: true })); }}
                 onOpenAddDest={() => { setModalError(null); setModals((m) => ({ ...m, dest: true })); }}
               />

@@ -15,8 +15,9 @@ export class DispatchesService {
 
     const id = uuidv4();
     const companyCode = dto.companyCode || 'RS_TRANSPORT';
-    const insertSql = `INSERT INTO dispatches (id, sr_no, date, truck_id, source_id, bales, destination, remarks, driver_mobile, company_code, slip_image)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+    const material = dto.material || 'Cotton Bales';
+    const insertSql = `INSERT INTO dispatches (id, sr_no, date, truck_id, source_id, bales, destination, remarks, driver_mobile, company_code, slip_image, material)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
     const insertParams = [
       id,
       dto.srNo || null,
@@ -29,6 +30,7 @@ export class DispatchesService {
       dto.driverMobile || null,
       companyCode,
       dto.slipImage || null,
+      material,
     ];
 
     try {
@@ -39,6 +41,7 @@ export class DispatchesService {
           await this.db.rawQuery("ALTER TABLE dispatches ADD COLUMN company_code VARCHAR(30) NOT NULL DEFAULT 'RS_TRANSPORT'");
           await this.db.rawQuery('ALTER TABLE dispatches ADD COLUMN driver_mobile VARCHAR(20) NULL');
           await this.db.rawQuery('ALTER TABLE dispatches ADD COLUMN slip_image LONGTEXT NULL');
+          await this.db.rawQuery("ALTER TABLE dispatches ADD COLUMN material VARCHAR(100) NOT NULL DEFAULT 'Cotton Bales'");
           await this.db.query(insertSql, insertParams);
         } catch {
           await this.db.query(

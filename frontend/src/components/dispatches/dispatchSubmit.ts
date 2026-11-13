@@ -14,6 +14,7 @@ interface CommonPayload {
   sourceId: string;
   destination?: string;
   remarks?: string;
+  material?: string;
   companyCode: string;
 }
 
@@ -39,6 +40,7 @@ export async function submitDispatch({
       sourceId: commonForm.sourceId,
       destination: commonForm.destination || undefined,
       remarks: commonForm.remarks || undefined,
+      material: commonForm.material || 'Cotton Bales',
       truckId: r.truckId,
       bales: r.bales ? Number(r.bales) : undefined,
       driverMobile: r.driverMobile || undefined,
@@ -56,6 +58,7 @@ export async function submitDispatch({
         sourceId: commonForm.sourceId,
         destination: commonForm.destination || undefined,
         remarks: commonForm.remarks || undefined,
+        material: commonForm.material || 'Cotton Bales',
         truckId: singleTruck.truckId,
         bales: singleTruck.bales ? Number(singleTruck.bales) : undefined,
         driverMobile: singleTruck.driverMobile || undefined,

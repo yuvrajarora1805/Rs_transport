@@ -51,6 +51,10 @@ export class CreateDispatchDto {
 
   @IsString()
   @IsOptional()
+  material?: string;
+
+  @IsString()
+  @IsOptional()
   slipImage?: string;
 }
 

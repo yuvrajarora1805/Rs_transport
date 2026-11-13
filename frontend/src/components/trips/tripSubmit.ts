@@ -36,7 +36,7 @@ export async function submitTrip({
     const valid = multiRows.filter((r) => r.truckId && r.netWeight);
     if (valid.length === 0) throw new Error('Please select at least one truck with weight');
     const payload = valid.map((r, i) => ({
-      tripNo: `${commonForm.tripNo || 'TR'}-${i + 1}`,
+      tripNo: `${commonForm.tripNo || 'TR'}-${String.fromCharCode(65 + i)}`,
       dispatchId: commonForm.dispatchId || undefined,
       truckId: r.truckId,
       destinationId: commonForm.destinationId,

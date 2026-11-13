@@ -23,9 +23,10 @@ export class TransportersService {
 
   async findAll() {
     const res = await this.db.query(`
-      SELECT tr.*, COUNT(t.id) as truck_count
+      SELECT tr.*, COUNT(DISTINCT COALESCE(t.id, trp.truck_id)) as truck_count
       FROM transporters tr
       LEFT JOIN trucks t ON tr.id = t.transporter_id
+      LEFT JOIN trips trp ON tr.id = trp.transporter_id
       WHERE tr.is_active = true
       GROUP BY tr.id, tr.name, tr.contact_no, tr.address, tr.is_active, tr.created_at
       ORDER BY tr.name ASC
