@@ -132,7 +132,12 @@ function NewFuelForm() {
                 <TruckSelect trucks={trucks} value={form.truckId} onChange={(id) => setForm({ ...form, truckId: id })} required placeholder="Search truck..." />
               </div>
 
-              <FuelReceiptUpload slipImage={form.slipImage} onUpload={handleImageUpload} onRemove={() => setForm((f) => ({ ...f, slipImage: '' }))} />
+              <FuelReceiptUpload
+                slipImage={form.slipImage}
+                onUpload={handleImageUpload}
+                onRemove={() => setForm((f) => ({ ...f, slipImage: '' }))}
+                onImagePasted={(img) => setForm((f) => ({ ...f, slipImage: img }))}
+              />
 
               <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
                 <label className="block text-sm font-bold text-slate-800 mb-2">Net Fuel Amount (₹) *</label>

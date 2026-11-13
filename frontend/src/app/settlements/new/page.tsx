@@ -189,6 +189,7 @@ function SettlementForm() {
                 slipImage={form.slipImage}
                 onUpload={handleImageUpload}
                 onRemove={() => setForm((f) => ({ ...f, slipImage: '' }))}
+                onImagePasted={(img) => setForm((f) => ({ ...f, slipImage: img }))}
               />
 
               <div className="pt-6 flex justify-end gap-4 border-t border-slate-200">
