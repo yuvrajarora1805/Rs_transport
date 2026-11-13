@@ -17,6 +17,7 @@ interface MultiTruckRowCardProps {
   row: MultiTruckRow;
   index: number;
   trucks: Truck[];
+  disabledTruckIds?: string[];
   canRemove: boolean;
   onChange: (field: keyof MultiTruckRow, value: string) => void;
   onRemove: () => void;
@@ -27,11 +28,15 @@ export function MultiTruckRowCard({
   row,
   index,
   trucks,
+  disabledTruckIds = [],
   canRemove,
   onChange,
   onRemove,
   onImageUpload,
 }: MultiTruckRowCardProps) {
+  const availableTrucks = trucks.filter(
+    (t) => !disabledTruckIds.includes(t.id) || t.id === row.truckId
+  );
   return (
     <div className="p-5 bg-slate-50/90 rounded-2xl border border-slate-200 space-y-4 shadow-2xs">
       <div className="flex items-center justify-between border-b border-slate-200/80 pb-2">
@@ -52,7 +57,7 @@ export function MultiTruckRowCard({
         <div className="md:col-span-5">
           <label className="block text-[11px] font-bold text-slate-700 mb-1">Select Truck *</label>
           <TruckSelect
-            trucks={trucks}
+            trucks={availableTrucks}
             value={row.truckId}
             onChange={(id) => onChange('truckId', id)}
             placeholder="Type truck no..."

@@ -49,18 +49,24 @@ export function MultiTruckListSection({
         </div>
       </div>
       <div className="space-y-4">
-        {multiTrucks.map((row, idx) => (
-          <MultiTruckRowCard
-            key={row.id}
-            row={row}
-            index={idx}
-            trucks={trucks}
-            canRemove={multiTrucks.length > 1}
-            onChange={(f, v) => onRowChange(row.id, f, v)}
-            onRemove={() => onRemoveRow(row.id)}
-            onImageUpload={(file) => onImageFile(file, (img) => onRowChange(row.id, 'slipImage', img))}
-          />
-        ))}
+        {multiTrucks.map((row, idx) => {
+          const selectedElsewhere = multiTrucks
+            .filter((r) => r.id !== row.id && r.truckId)
+            .map((r) => r.truckId);
+          return (
+            <MultiTruckRowCard
+              key={row.id}
+              row={row}
+              index={idx}
+              trucks={trucks}
+              disabledTruckIds={selectedElsewhere}
+              canRemove={multiTrucks.length > 1}
+              onChange={(f, v) => onRowChange(row.id, f, v)}
+              onRemove={() => onRemoveRow(row.id)}
+              onImageUpload={(file) => onImageFile(file, (img) => onRowChange(row.id, 'slipImage', img))}
+            />
+          );
+        })}
       </div>
     </div>
   );
