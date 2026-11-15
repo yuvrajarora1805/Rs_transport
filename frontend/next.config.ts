@@ -12,6 +12,7 @@ const nextConfig: NextConfig = {
     },
   },
   allowedDevOrigins: [
+    "10.7.5.109",
     "192.168.1.12",
     "rs.yarora.dev",
     "rs.omvky.com",

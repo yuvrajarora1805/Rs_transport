@@ -1,9 +1,12 @@
 export const getApiBase = () => {
   if (typeof window !== 'undefined') {
-    // If accessing via domain like rs.yarora.dev, use the Next.js rewrite proxy /api/backend
-    if (window.location.hostname.includes('yarora.dev') || window.location.hostname !== 'localhost' && !window.location.hostname.startsWith('192.168.')) {
+    const host = window.location.hostname;
+    // Production domains (rs.omvky.com, rs.yarora.dev, etc.) -> use proxy rewrite
+    if (host.includes('yarora.dev') || host.includes('omvky.com')) {
       return '/api/backend';
     }
+    // Local / Network IP access (localhost, 10.x.x.x, 192.168.x.x, etc.)
+    return `http://${host}:4000`;
   }
   return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
 };
