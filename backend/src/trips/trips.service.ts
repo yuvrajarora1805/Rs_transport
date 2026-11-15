@@ -165,7 +165,7 @@ export class TripsService {
       JOIN trucks trk ON t.truck_id = trk.id
       LEFT JOIN destinations d ON t.destination_id = d.id
       LEFT JOIN parties p ON t.party_id = p.id
-      LEFT JOIN transporters transp ON (t.transporter_id = transp.id OR REPLACE(REPLACE(UPPER(transp.name), '.', ''), ' ', '_') = t.company_code)
+      LEFT JOIN transporters transp ON transp.id = (SELECT tr.id FROM transporters tr WHERE tr.id = t.transporter_id OR REPLACE(REPLACE(UPPER(tr.name), '.', ''), ' ', '_') = t.company_code LIMIT 1)
       LEFT JOIN settlements s ON t.id = s.trip_id
       WHERE 1=1
     `;
@@ -197,7 +197,7 @@ export class TripsService {
        JOIN trucks trk ON t.truck_id = trk.id
        LEFT JOIN destinations d ON t.destination_id = d.id
        LEFT JOIN parties p ON t.party_id = p.id
-       LEFT JOIN transporters transp ON (t.transporter_id = transp.id OR REPLACE(REPLACE(UPPER(transp.name), '.', ''), ' ', '_') = t.company_code)
+       LEFT JOIN transporters transp ON transp.id = (SELECT tr.id FROM transporters tr WHERE tr.id = t.transporter_id OR REPLACE(REPLACE(UPPER(tr.name), '.', ''), ' ', '_') = t.company_code LIMIT 1)
        WHERE t.id = ?`,
       [id],
     );

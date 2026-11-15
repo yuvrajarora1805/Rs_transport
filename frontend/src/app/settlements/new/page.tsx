@@ -65,9 +65,9 @@ function SettlementForm() {
   useEffect(() => {
     apiFetch<Trip[]>('/trips')
       .then((res) => {
-        const list = res || [];
-        setTrips(list);
-        if (tripIdParam) handleTripChange(tripIdParam, list);
+        const unique = (res || []).filter((t, i, arr) => t?.id && arr.findIndex((x) => x.id === t.id) === i);
+        setTrips(unique);
+        if (tripIdParam) handleTripChange(tripIdParam, unique);
       })
       .catch((err) => setError(err.message));
   }, [tripIdParam]);
@@ -142,8 +142,8 @@ function SettlementForm() {
                   className="w-full h-11 px-4 text-base border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white"
                 >
                   <option value="">-- Choose Unsettled Trip --</option>
-                  {trips.map((t) => (
-                    <option key={t.id} value={t.id}>
+                  {trips.map((t, idx) => (
+                    <option key={`${t.id || 't'}-${idx}`} value={t.id}>
                       Trip: {t.tripNo || (t as any).trip_no} | Truck: {t.truck?.truckNo || (t as any).truck_no} | Transporter: {(t as any).transporter_name || t.transporter?.name || (t as any).company_code || 'RS Transport'} | Gross: {formatCurrency(Number(t.grossFreight || (t as any).gross_freight))}
                     </option>
                   ))}
