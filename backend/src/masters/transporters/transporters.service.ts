@@ -38,26 +38,40 @@ export class TransportersService implements OnModuleInit {
   }
 
   async findAll() {
-    const res = await this.db.query(`
-      SELECT tr.*, 
-        (
-          SELECT COUNT(DISTINCT truck_id)
-          FROM (
-            SELECT t.id AS truck_id
-            FROM trucks t
-            WHERE t.transporter_id = tr.id
-            UNION
-            SELECT trp.truck_id
-            FROM trips trp
-            WHERE trp.transporter_id = tr.id
-               OR REPLACE(REPLACE(UPPER(tr.name), '.', ''), ' ', '_') = trp.company_code
-          ) u
-        ) as truck_count
-      FROM transporters tr
-      WHERE tr.is_active = true
-      ORDER BY tr.name ASC
-    `);
-    return res.rows;
+    const transportersRes = await this.db.query(
+      'SELECT * FROM transporters WHERE is_active = true ORDER BY name ASC',
+    );
+    const transporters = transportersRes.rows || [];
+    if (transporters.length === 0) return [];
+
+    try {
+      const truckCountsRes = await this.db.query(`
+        SELECT transporter_id, COUNT(DISTINCT truck_id) as count
+        FROM (
+          SELECT id as truck_id, transporter_id FROM trucks WHERE transporter_id IS NOT NULL
+          UNION
+          SELECT t.truck_id, COALESCE(t.transporter_id, tr.id) as transporter_id
+          FROM trips t
+          LEFT JOIN transporters tr ON REPLACE(REPLACE(UPPER(tr.name), '.', ''), ' ', '_') = t.company_code
+          WHERE t.transporter_id IS NOT NULL OR t.company_code IS NOT NULL
+        ) combined
+        WHERE transporter_id IS NOT NULL
+        GROUP BY transporter_id
+      `);
+
+      const countMap = new Map<string, number>();
+      for (const row of truckCountsRes.rows || []) {
+        countMap.set(row.transporter_id, Number(row.count || 0));
+      }
+
+      return transporters.map((tr: any) => ({
+        ...tr,
+        truck_count: countMap.get(tr.id) || 0,
+      }));
+    } catch (err) {
+      console.warn('Transporter truck count query fallback:', err);
+      return transporters.map((tr: any) => ({ ...tr, truck_count: 0 }));
+    }
   }
 
   async remove(id: string) {
