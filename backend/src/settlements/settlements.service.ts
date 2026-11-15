@@ -98,7 +98,7 @@ export class SettlementsService {
     if (priorDeficit.gt(0)) {
       try {
         let remainingToOffset = priorDeficit.toNumber();
-        const deficits = await this.getTruckDeficits(trip.truck_id);
+        const deficits = await this.getDeficits(trip.truck_id, trip.transporter_id, companyCode);
         for (const item of deficits) {
           if (remainingToOffset <= 0) break;
           const currentOut = Number(item.outstanding || 0);
@@ -122,16 +122,39 @@ export class SettlementsService {
     return this.findOne(id);
   }
 
-  async getTruckDeficits(truckId: string) {
-    const res = await this.db.query(
-      `SELECT s.id, s.trip_id, t.trip_no, s.settlement_date,
-              s.gross_freight, s.diesel_amount, s.net_payable, s.outstanding, s.status
-       FROM settlements s
-       JOIN trips t ON s.trip_id = t.id
-       WHERE t.truck_id = ? AND s.outstanding < 0
-       ORDER BY s.settlement_date ASC, s.created_at ASC`,
-      [truckId],
-    );
+  async getDeficits(truckId?: string, transporterId?: string, companyCode?: string) {
+    let sql = `
+      SELECT s.id, s.trip_id, t.trip_no, trk.truck_no, trk.owner_name,
+             COALESCE(transp.name, s.company_code) as transporter_name,
+             s.settlement_date, s.gross_freight, s.diesel_amount, s.net_payable, s.outstanding, s.status
+      FROM settlements s
+      JOIN trips t ON s.trip_id = t.id
+      JOIN trucks trk ON t.truck_id = trk.id
+      LEFT JOIN transporters transp ON t.transporter_id = transp.id
+      WHERE s.outstanding < 0
+    `;
+    const params: any[] = [];
+    const orClauses: string[] = [];
+
+    if (truckId) {
+      orClauses.push('t.truck_id = ?');
+      params.push(truckId);
+    }
+    if (transporterId) {
+      orClauses.push('t.transporter_id = ?');
+      params.push(transporterId);
+    }
+    if (companyCode) {
+      orClauses.push('s.company_code = ?');
+      params.push(companyCode);
+    }
+
+    if (orClauses.length > 0) {
+      sql += ` AND (${orClauses.join(' OR ')})`;
+    }
+
+    sql += ` ORDER BY s.settlement_date ASC, s.created_at ASC`;
+    const res = await this.db.query(sql, params);
     return res.rows || [];
   }
 

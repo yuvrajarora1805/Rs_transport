@@ -51,10 +51,11 @@ function SettlementForm() {
             if (totalAdv > 0) setForm((p) => ({ ...p, advanceAmount: totalAdv.toFixed(2) }));
           }
           const trkId = details.truck_id || details.truck?.id;
-          if (trkId) {
-            const defRes = await apiFetch<PriorDeficitItem[]>(`/settlements/truck-deficits/${trkId}`).catch(() => []);
-            setDeficits(defRes || []);
-          }
+          const transpId = details.transporter_id || details.transporter?.id;
+          const compCode = details.company_code || (found as any)?.company_code;
+          const q = new URLSearchParams({ ...(trkId && { truckId: trkId }), ...(transpId && { transporterId: transpId }), ...(compCode && { companyCode: compCode }) });
+          const defRes = await apiFetch<PriorDeficitItem[]>(`/settlements/deficits?${q.toString()}`).catch(() => []);
+          setDeficits(defRes || []);
         }
       } catch (e) {}
     } else {
@@ -85,13 +86,7 @@ function SettlementForm() {
   const netWt = selectedTrip ? Number(selectedTrip.netWeight ?? (selectedTrip as any).net_weight ?? 0) : 0;
   const rate = selectedTrip ? Number(selectedTrip.ratePerUnit ?? (selectedTrip as any).rate_per_unit ?? 0) : 0;
   const gross = rawGross > 0 ? rawGross : (netWt > 0 && rate > 0 ? netWt * rate : 0);
-  const [advance, diesel, comm, other, priorRec] = [
-    Number(form.advanceAmount) || 0,
-    Number(form.dieselAmount) || 0,
-    Number(form.commission) || 0,
-    Number(form.otherDeductions) || 0,
-    Number(priorRecovery) || 0,
-  ];
+  const [advance, diesel, comm, other, priorRec] = [Number(form.advanceAmount) || 0, Number(form.dieselAmount) || 0, Number(form.commission) || 0, Number(form.otherDeductions) || 0, Number(priorRecovery) || 0];
   const totalDeductions = advance + diesel + comm + other;
   const netPayable = gross - totalDeductions - priorRec;
 

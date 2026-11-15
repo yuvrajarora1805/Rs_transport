@@ -8,6 +8,8 @@ export interface PriorDeficitItem {
   id: string;
   trip_id: string;
   trip_no: string;
+  truck_no?: string;
+  transporter_name?: string;
   settlement_date: string;
   gross_freight: number;
   diesel_amount: number;
@@ -40,18 +42,20 @@ export function PriorDeficitAlert({
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-2 text-amber-900 font-bold text-sm">
           <AlertTriangle size={18} className="text-amber-600 shrink-0" />
-          <span>Truck Recoverable Deficit Detected (Excess Diesel / Overdrawn)</span>
+          <span>Recoverable Excess Diesel / Overdrawn Trips Detected</span>
         </div>
         <span className="px-2 py-0.5 rounded-full text-xs font-black bg-amber-200 text-amber-900">
           Total Deficit: {formatCurrency(totalDeficit)}
         </span>
       </div>
 
-      <div className="text-xs text-amber-800 space-y-1 bg-white/70 p-2.5 rounded-lg border border-amber-200/60">
-        <div className="font-semibold text-slate-700 mb-1">Unsettled Deficit Trips:</div>
+      <div className="text-xs text-amber-800 space-y-1.5 bg-white/70 p-2.5 rounded-lg border border-amber-200/60">
+        <div className="font-semibold text-slate-700 mb-1">Unsettled Deficit Trips from Fleet / Transporter:</div>
         {deficits.map((d) => (
           <div key={d.id} className="flex justify-between items-center text-slate-600 py-0.5">
-            <span>Trip #{d.trip_no} ({d.settlement_date ? new Date(d.settlement_date).toLocaleDateString('en-IN') : '-'}):</span>
+            <span>
+              Trip #{d.trip_no} {d.truck_no ? `• Truck: ${d.truck_no}` : ''} {d.transporter_name ? `(${d.transporter_name})` : ''}:
+            </span>
             <span className="font-bold text-rose-700">- {formatCurrency(Math.abs(Number(d.outstanding)))}</span>
           </div>
         ))}
@@ -94,3 +98,4 @@ export function PriorDeficitAlert({
     </div>
   );
 }
+

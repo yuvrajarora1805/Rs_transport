@@ -21,9 +21,18 @@ export class SettlementsController {
     return this.settlementsService.findAll(status, companyCode);
   }
 
+  @Get('deficits')
+  getDeficits(
+    @Query('truckId') truckId?: string,
+    @Query('transporterId') transporterId?: string,
+    @Query('companyCode') companyCode?: string,
+  ) {
+    return this.settlementsService.getDeficits(truckId, transporterId, companyCode);
+  }
+
   @Get('truck-deficits/:truckId')
   getTruckDeficits(@Param('truckId') truckId: string) {
-    return this.settlementsService.getTruckDeficits(truckId);
+    return this.settlementsService.getDeficits(truckId);
   }
 
   @Get(':id')
