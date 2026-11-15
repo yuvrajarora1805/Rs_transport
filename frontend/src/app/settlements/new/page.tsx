@@ -19,8 +19,7 @@ function SettlementForm() {
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
   const [deficits, setDeficits] = useState<PriorDeficitItem[]>([]);
   const [priorRecovery, setPriorRecovery] = useState<string>('0');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false); const [error, setError] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     tripId: tripIdParam || '',
@@ -199,6 +198,7 @@ function SettlementForm() {
                 priorRecovery={priorRecovery}
                 onPriorRecoveryChange={setPriorRecovery}
                 currentAvailableNet={gross - totalDeductions}
+                currentTruckNo={selectedTrip?.truck?.truckNo || (selectedTrip as any)?.truck_no}
               />
 
               <SettlementSlipUpload

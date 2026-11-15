@@ -1,12 +1,21 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, OnModuleInit } from '@nestjs/common';
 import { DbService } from '../db/db.service';
 import { CreateSettlementDto } from './dto/create-settlement.dto';
 import Decimal from 'decimal.js';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
-export class SettlementsService {
+export class SettlementsService implements OnModuleInit {
   constructor(private db: DbService) {}
+
+  async onModuleInit() {
+    try {
+      // Mark legacy settlements already marked 'PAID' as 'RECOVERED' so they do not show in active deficit list
+      await this.db.query(
+        "UPDATE settlements SET status = 'RECOVERED' WHERE status = 'PAID' AND (outstanding < 0 OR net_payable < 0)",
+      );
+    } catch {}
+  }
 
   async create(dto: CreateSettlementDto) {
     const tripRes = await this.db.query('SELECT * FROM trips WHERE id = ?', [dto.tripId]);
@@ -133,7 +142,8 @@ export class SettlementsService {
       JOIN trips t ON s.trip_id = t.id
       JOIN trucks trk ON t.truck_id = trk.id
       LEFT JOIN transporters transp ON (t.transporter_id = transp.id OR REPLACE(REPLACE(UPPER(transp.name), '.', ''), ' ', '_') = s.company_code)
-      WHERE (s.outstanding < 0 OR (s.net_payable < 0 AND s.status != 'RECOVERED'))
+      WHERE s.status NOT IN ('PAID', 'SETTLED', 'RECOVERED', 'CLOSED')
+        AND (s.outstanding < 0 OR s.net_payable < 0)
     `;
     const params: any[] = [];
     const orClauses: string[] = [];
