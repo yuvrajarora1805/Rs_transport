@@ -8,6 +8,7 @@ import { Trip } from '../../../types';
 import { Send, AlertCircle } from 'lucide-react';
 import { SettlementSlipUpload } from '../../../components/settlements/SettlementSlipUpload';
 import { SettlementSummarySidebar } from '../../../components/settlements/SettlementSummarySidebar';
+import { PriorDeficitAlert, PriorDeficitItem } from '../../../components/settlements/PriorDeficitAlert';
 
 function SettlementForm() {
   const router = useRouter();
@@ -16,6 +17,8 @@ function SettlementForm() {
 
   const [trips, setTrips] = useState<Trip[]>([]);
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
+  const [deficits, setDeficits] = useState<PriorDeficitItem[]>([]);
+  const [priorRecovery, setPriorRecovery] = useState<string>('0');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,18 +35,25 @@ function SettlementForm() {
     setForm((f) => ({ ...f, tripId: id }));
     const found = tripList.find((t) => t.id === id) || null;
     if (found) setSelectedTrip(found);
+    setDeficits([]);
+    setPriorRecovery('0');
     if (id) {
       try {
         const details = await apiFetch<any>(`/trips/${id}`);
         if (details) {
           setSelectedTrip((prev) => ({ ...(found || {}), ...prev, ...details }));
-          if (details?.fuelRecords && Array.isArray(details.fuelRecords)) {
+          if (details?.fuelRecords?.length) {
             const totalFuel = details.fuelRecords.reduce((acc: number, f: any) => acc + Number(f.amount || 0), 0);
-            if (totalFuel > 0) setForm((prev) => ({ ...prev, dieselAmount: totalFuel.toFixed(2) }));
+            if (totalFuel > 0) setForm((p) => ({ ...p, dieselAmount: totalFuel.toFixed(2) }));
           }
-          if (details?.advances && Array.isArray(details.advances)) {
+          if (details?.advances?.length) {
             const totalAdv = details.advances.reduce((acc: number, a: any) => acc + Number(a.amount || 0), 0);
-            if (totalAdv > 0) setForm((prev) => ({ ...prev, advanceAmount: totalAdv.toFixed(2) }));
+            if (totalAdv > 0) setForm((p) => ({ ...p, advanceAmount: totalAdv.toFixed(2) }));
+          }
+          const trkId = details.truck_id || details.truck?.id;
+          if (trkId) {
+            const defRes = await apiFetch<PriorDeficitItem[]>(`/settlements/truck-deficits/${trkId}`).catch(() => []);
+            setDeficits(defRes || []);
           }
         }
       } catch (e) {}
@@ -57,9 +67,7 @@ function SettlementForm() {
       .then((res) => {
         const list = res || [];
         setTrips(list);
-        if (tripIdParam) {
-          handleTripChange(tripIdParam, list);
-        }
+        if (tripIdParam) handleTripChange(tripIdParam, list);
       })
       .catch((err) => setError(err.message));
   }, [tripIdParam]);
@@ -77,12 +85,15 @@ function SettlementForm() {
   const netWt = selectedTrip ? Number(selectedTrip.netWeight ?? (selectedTrip as any).net_weight ?? 0) : 0;
   const rate = selectedTrip ? Number(selectedTrip.ratePerUnit ?? (selectedTrip as any).rate_per_unit ?? 0) : 0;
   const gross = rawGross > 0 ? rawGross : (netWt > 0 && rate > 0 ? netWt * rate : 0);
-  const advance = Number(form.advanceAmount) || 0;
-  const diesel = Number(form.dieselAmount) || 0;
-  const comm = Number(form.commission) || 0;
-  const other = Number(form.otherDeductions) || 0;
+  const [advance, diesel, comm, other, priorRec] = [
+    Number(form.advanceAmount) || 0,
+    Number(form.dieselAmount) || 0,
+    Number(form.commission) || 0,
+    Number(form.otherDeductions) || 0,
+    Number(priorRecovery) || 0,
+  ];
   const totalDeductions = advance + diesel + comm + other;
-  const netPayable = gross - totalDeductions;
+  const netPayable = gross - totalDeductions - priorRec;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -98,6 +109,7 @@ function SettlementForm() {
           dieselAmount: diesel,
           commission: comm,
           otherDeductions: other,
+          priorDeficitRecovery: priorRec > 0 ? priorRec : undefined,
           slipImage: form.slipImage || undefined,
         }),
       });
@@ -112,7 +124,6 @@ function SettlementForm() {
   return (
     <div className="pb-16">
       <Header title="Create Trip Settlement" subtitle="Calculate freight deductions, commission & net payable balance" />
-
       <div className="p-4 sm:p-6 lg:p-8 w-full max-w-7xl 2xl:max-w-screen-2xl">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8 items-start">
           <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200 p-5 sm:p-8 shadow-xs">
@@ -121,7 +132,6 @@ function SettlementForm() {
                 <AlertCircle size={18} /><span>{error}</span>
               </div>
             )}
-
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
                 <label className="block text-sm font-bold text-slate-800 mb-2">Select Trip to Settle *</label>
@@ -132,14 +142,11 @@ function SettlementForm() {
                   className="w-full h-11 px-4 text-base border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white"
                 >
                   <option value="">-- Choose Unsettled Trip --</option>
-                  {trips.map((t) => {
-                    const transp = (t as any).transporter_name || t.transporter?.name || (t as any).company_code || 'RS Transport';
-                    return (
-                      <option key={t.id} value={t.id}>
-                        Trip: {t.tripNo || (t as any).trip_no} | Truck: {t.truck?.truckNo || (t as any).truck_no} | Transporter: {transp} | Gross: {formatCurrency(Number(t.grossFreight || (t as any).gross_freight))}
-                      </option>
-                    );
-                  })}
+                  {trips.map((t) => (
+                    <option key={t.id} value={t.id}>
+                      Trip: {t.tripNo || (t as any).trip_no} | Truck: {t.truck?.truckNo || (t as any).truck_no} | Transporter: {(t as any).transporter_name || t.transporter?.name || (t as any).company_code || 'RS Transport'} | Gross: {formatCurrency(Number(t.grossFreight || (t as any).gross_freight))}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -185,6 +192,14 @@ function SettlementForm() {
                 </div>
               </div>
 
+              {/* Prior Truck Recoverable Deficit Alert & Offset Selector */}
+              <PriorDeficitAlert
+                deficits={deficits}
+                priorRecovery={priorRecovery}
+                onPriorRecoveryChange={setPriorRecovery}
+                currentAvailableNet={gross - totalDeductions}
+              />
+
               <SettlementSlipUpload
                 slipImage={form.slipImage}
                 onUpload={handleImageUpload}
@@ -197,16 +212,13 @@ function SettlementForm() {
                   type="button"
                   onClick={() => router.back()}
                   className="px-6 py-2.5 text-sm font-bold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
-                >
-                  Cancel
-                </button>
+                >Cancel</button>
                 <button
                   type="submit"
                   disabled={loading}
                   className="flex items-center gap-2 px-8 py-2.5 text-sm font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-xs transition-colors disabled:opacity-50"
                 >
-                  <Send size={16} />
-                  {loading ? 'Saving...' : 'Finalize Settlement'}
+                  <Send size={16} />{loading ? 'Saving...' : 'Finalize Settlement'}
                 </button>
               </div>
             </form>
@@ -219,6 +231,7 @@ function SettlementForm() {
             advance={advance}
             comm={comm}
             other={other}
+            priorRecovery={priorRec}
             netPayable={netPayable}
           />
         </div>

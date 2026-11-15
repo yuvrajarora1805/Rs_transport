@@ -21,6 +21,11 @@ export class SettlementsController {
     return this.settlementsService.findAll(status, companyCode);
   }
 
+  @Get('truck-deficits/:truckId')
+  getTruckDeficits(@Param('truckId') truckId: string) {
+    return this.settlementsService.getTruckDeficits(truckId);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string) {
     return this.settlementsService.findOne(id);

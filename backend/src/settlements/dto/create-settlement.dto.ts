@@ -21,6 +21,10 @@ export class CreateSettlementDto {
   @IsOptional()
   otherDeductions?: number;
 
+  @IsNumber()
+  @IsOptional()
+  priorDeficitRecovery?: number;
+
   @IsString()
   @IsOptional()
   slipImage?: string;

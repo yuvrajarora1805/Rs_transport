@@ -28,8 +28,9 @@ export class SettlementsService {
     const diesel = new Decimal(dto.dieselAmount || 0);
     const commission = new Decimal(dto.commission || 0);
     const other = new Decimal(dto.otherDeductions || 0);
+    const priorDeficit = new Decimal(dto.priorDeficitRecovery || 0);
 
-    const totalDeductions = advance.add(diesel).add(commission).add(other);
+    const totalDeductions = advance.add(diesel).add(commission).add(other).add(priorDeficit);
     const netPayable = gross.sub(totalDeductions);
     const status = netPayable.isNegative() ? 'OVERDRAWN' : 'APPROVED';
 
@@ -37,8 +38,8 @@ export class SettlementsService {
     const companyCode = trip.company_code || 'RS_TRANSPORT';
     const insertSql = `INSERT INTO settlements (
         id, trip_id, settlement_date, gross_freight, advance_amount, diesel_amount,
-        commission, other_deductions, net_payable, total_paid, outstanding, status, company_code, slip_image
-       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
+        commission, other_deductions, prior_deficit_offset, net_payable, total_paid, outstanding, status, company_code, slip_image
+       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`;
     const insertParams = [
       id,
       dto.tripId,
@@ -48,6 +49,7 @@ export class SettlementsService {
       diesel.toNumber(),
       commission.toNumber(),
       other.toNumber(),
+      priorDeficit.toNumber(),
       netPayable.toNumber(),
       0,
       netPayable.toNumber(),
@@ -63,6 +65,7 @@ export class SettlementsService {
         try {
           await this.db.rawQuery("ALTER TABLE settlements ADD COLUMN company_code VARCHAR(30) NOT NULL DEFAULT 'RS_TRANSPORT'");
           await this.db.rawQuery('ALTER TABLE settlements ADD COLUMN slip_image LONGTEXT NULL');
+          await this.db.rawQuery('ALTER TABLE settlements ADD COLUMN prior_deficit_offset DECIMAL(12,2) NOT NULL DEFAULT 0.00');
           await this.db.query(insertSql, insertParams);
         } catch {
           await this.db.query(
@@ -78,7 +81,7 @@ export class SettlementsService {
               advance.toNumber(),
               diesel.toNumber(),
               commission.toNumber(),
-              other.toNumber(),
+              other.add(priorDeficit).toNumber(),
               netPayable.toNumber(),
               0,
               netPayable.toNumber(),
@@ -91,7 +94,45 @@ export class SettlementsService {
       }
     }
 
+    // Offset prior overdrawn/excess diesel settlements for this truck
+    if (priorDeficit.gt(0)) {
+      try {
+        let remainingToOffset = priorDeficit.toNumber();
+        const deficits = await this.getTruckDeficits(trip.truck_id);
+        for (const item of deficits) {
+          if (remainingToOffset <= 0) break;
+          const currentOut = Number(item.outstanding || 0);
+          if (currentOut < 0) {
+            const deficitAmt = Math.abs(currentOut);
+            const applied = Math.min(remainingToOffset, deficitAmt);
+            const newOutstanding = currentOut + applied;
+            const newStatus = newOutstanding >= 0 ? 'RECOVERED' : 'OVERDRAWN';
+            await this.db.query(
+              'UPDATE settlements SET outstanding = ?, status = ? WHERE id = ?',
+              [newOutstanding, newStatus, item.id],
+            );
+            remainingToOffset -= applied;
+          }
+        }
+      } catch (offsetErr) {
+        console.warn('Notice while updating prior deficit offsets:', offsetErr);
+      }
+    }
+
     return this.findOne(id);
+  }
+
+  async getTruckDeficits(truckId: string) {
+    const res = await this.db.query(
+      `SELECT s.id, s.trip_id, t.trip_no, s.settlement_date,
+              s.gross_freight, s.diesel_amount, s.net_payable, s.outstanding, s.status
+       FROM settlements s
+       JOIN trips t ON s.trip_id = t.id
+       WHERE t.truck_id = ? AND s.outstanding < 0
+       ORDER BY s.settlement_date ASC, s.created_at ASC`,
+      [truckId],
+    );
+    return res.rows || [];
   }
 
   async findAll(status?: string, companyCode?: string) {

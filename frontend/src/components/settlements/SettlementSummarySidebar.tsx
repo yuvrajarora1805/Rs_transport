@@ -12,6 +12,7 @@ interface SettlementSummarySidebarProps {
   advance: number;
   comm: number;
   other: number;
+  priorRecovery?: number;
   netPayable: number;
 }
 
@@ -22,6 +23,7 @@ export function SettlementSummarySidebar({
   advance,
   comm,
   other,
+  priorRecovery = 0,
   netPayable,
 }: SettlementSummarySidebarProps) {
   const [showSlipModal, setShowSlipModal] = useState(false);
@@ -99,6 +101,12 @@ export function SettlementSummarySidebar({
             <div className="flex justify-between py-1 border-b border-slate-50 text-rose-600">
               <span>Other Deductions:</span>
               <span className="font-semibold">- {formatCurrency(other)}</span>
+            </div>
+          )}
+          {priorRecovery > 0 && (
+            <div className="flex justify-between py-1 border-b border-slate-50 text-amber-700 font-bold">
+              <span>Prior Deficit Recovery:</span>
+              <span>- {formatCurrency(priorRecovery)}</span>
             </div>
           )}
           <div className={`flex justify-between py-2 px-3 rounded-xl ${netPayable < 0 ? 'bg-rose-50/80' : 'bg-emerald-50/70'}`}>
