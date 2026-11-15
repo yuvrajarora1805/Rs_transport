@@ -126,23 +126,25 @@ export class SettlementsService {
     let sql = `
       SELECT s.id, s.trip_id, t.trip_no, trk.truck_no, trk.owner_name,
              COALESCE(transp.name, s.company_code) as transporter_name,
-             s.settlement_date, s.gross_freight, s.diesel_amount, s.net_payable, s.outstanding, s.status
+             s.settlement_date, s.gross_freight, s.diesel_amount, s.net_payable,
+             CASE WHEN s.outstanding < 0 THEN s.outstanding ELSE s.net_payable END as outstanding,
+             s.status
       FROM settlements s
       JOIN trips t ON s.trip_id = t.id
       JOIN trucks trk ON t.truck_id = trk.id
-      LEFT JOIN transporters transp ON t.transporter_id = transp.id
-      WHERE s.outstanding < 0
+      LEFT JOIN transporters transp ON (t.transporter_id = transp.id OR REPLACE(REPLACE(UPPER(transp.name), '.', ''), ' ', '_') = s.company_code)
+      WHERE (s.outstanding < 0 OR (s.net_payable < 0 AND s.status != 'RECOVERED'))
     `;
     const params: any[] = [];
     const orClauses: string[] = [];
 
     if (truckId) {
-      orClauses.push('t.truck_id = ?');
-      params.push(truckId);
+      orClauses.push('(t.truck_id = ? OR trk.truck_no = (SELECT truck_no FROM trucks WHERE id = ? LIMIT 1))');
+      params.push(truckId, truckId);
     }
     if (transporterId) {
-      orClauses.push('t.transporter_id = ?');
-      params.push(transporterId);
+      orClauses.push('(t.transporter_id = ? OR transp.id = ?)');
+      params.push(transporterId, transporterId);
     }
     if (companyCode) {
       orClauses.push('s.company_code = ?');

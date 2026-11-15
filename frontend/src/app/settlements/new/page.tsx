@@ -43,19 +43,25 @@ function SettlementForm() {
         if (details) {
           setSelectedTrip((prev) => ({ ...(found || {}), ...prev, ...details }));
           if (details?.fuelRecords?.length) {
-            const totalFuel = details.fuelRecords.reduce((acc: number, f: any) => acc + Number(f.amount || 0), 0);
-            if (totalFuel > 0) setForm((p) => ({ ...p, dieselAmount: totalFuel.toFixed(2) }));
+            const tf = details.fuelRecords.reduce((acc: number, f: any) => acc + Number(f.amount || 0), 0);
+            if (tf > 0) setForm((p) => ({ ...p, dieselAmount: tf.toFixed(2) }));
           }
           if (details?.advances?.length) {
-            const totalAdv = details.advances.reduce((acc: number, a: any) => acc + Number(a.amount || 0), 0);
-            if (totalAdv > 0) setForm((p) => ({ ...p, advanceAmount: totalAdv.toFixed(2) }));
+            const ta = details.advances.reduce((acc: number, a: any) => acc + Number(a.amount || 0), 0);
+            if (ta > 0) setForm((p) => ({ ...p, advanceAmount: ta.toFixed(2) }));
           }
           const trkId = details.truck_id || details.truck?.id;
           const transpId = details.transporter_id || details.transporter?.id;
           const compCode = details.company_code || (found as any)?.company_code;
           const q = new URLSearchParams({ ...(trkId && { truckId: trkId }), ...(transpId && { transporterId: transpId }), ...(compCode && { companyCode: compCode }) });
-          const defRes = await apiFetch<PriorDeficitItem[]>(`/settlements/deficits?${q.toString()}`).catch(() => []);
-          setDeficits(defRes || []);
+          let defRes = await apiFetch<PriorDeficitItem[]>(`/settlements/deficits?${q.toString()}`).catch(() => []);
+          if (!defRes?.length && trkId) defRes = await apiFetch<PriorDeficitItem[]>(`/settlements/truck-deficits/${trkId}`).catch(() => []);
+          const list = defRes || [];
+          setDeficits(list);
+          if (list.length > 0) {
+            const sumDef = list.reduce((s, d) => s + Math.abs(Number(d.outstanding || 0)), 0);
+            if (sumDef > 0) setPriorRecovery(sumDef.toFixed(2));
+          }
         }
       } catch (e) {}
     } else {
