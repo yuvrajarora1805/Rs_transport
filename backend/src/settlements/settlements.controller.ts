@@ -24,10 +24,9 @@ export class SettlementsController {
   @Get('deficits')
   getDeficits(
     @Query('truckId') truckId?: string,
-    @Query('transporterId') transporterId?: string,
-    @Query('companyCode') companyCode?: string,
+    @Query('truckNo') truckNo?: string,
   ) {
-    return this.settlementsService.getDeficits(truckId, transporterId, companyCode);
+    return this.settlementsService.getDeficits(truckId, truckNo);
   }
 
   @Get('truck-deficits/:truckId')

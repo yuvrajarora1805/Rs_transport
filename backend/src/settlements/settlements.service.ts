@@ -107,7 +107,7 @@ export class SettlementsService implements OnModuleInit {
     if (priorDeficit.gt(0)) {
       try {
         let remainingToOffset = priorDeficit.toNumber();
-        const deficits = await this.getDeficits(trip.truck_id, trip.transporter_id, companyCode);
+        const deficits = await this.getDeficits(trip.truck_id);
         for (const item of deficits) {
           if (remainingToOffset <= 0) break;
           const currentOut = Number(item.outstanding || 0);
@@ -131,7 +131,7 @@ export class SettlementsService implements OnModuleInit {
     return this.findOne(id);
   }
 
-  async getDeficits(truckId?: string, transporterId?: string, companyCode?: string) {
+  async getDeficits(truckId?: string, truckNo?: string) {
     let sql = `
       SELECT s.id, s.trip_id, t.trip_no, trk.truck_no, trk.owner_name,
              COALESCE(transp.name, s.company_code) as transporter_name,
@@ -141,28 +141,20 @@ export class SettlementsService implements OnModuleInit {
       FROM settlements s
       JOIN trips t ON s.trip_id = t.id
       JOIN trucks trk ON t.truck_id = trk.id
-      LEFT JOIN transporters transp ON (t.transporter_id = transp.id OR REPLACE(REPLACE(UPPER(transp.name), '.', ''), ' ', '_') = s.company_code)
+      LEFT JOIN transporters transp ON t.transporter_id = transp.id
       WHERE s.status NOT IN ('PAID', 'SETTLED', 'RECOVERED', 'CLOSED')
         AND (s.outstanding < 0 OR s.net_payable < 0)
     `;
     const params: any[] = [];
-    const orClauses: string[] = [];
-
-    if (truckId) {
-      orClauses.push('(t.truck_id = ? OR trk.truck_no = (SELECT truck_no FROM trucks WHERE id = ? LIMIT 1))');
+    if (truckId && truckNo) {
+      sql += ` AND (t.truck_id = ? OR trk.truck_no = ?)`;
+      params.push(truckId, truckNo);
+    } else if (truckId) {
+      sql += ` AND (t.truck_id = ? OR trk.truck_no = (SELECT truck_no FROM trucks WHERE id = ? LIMIT 1))`;
       params.push(truckId, truckId);
-    }
-    if (transporterId) {
-      orClauses.push('(t.transporter_id = ? OR transp.id = ?)');
-      params.push(transporterId, transporterId);
-    }
-    if (companyCode) {
-      orClauses.push('s.company_code = ?');
-      params.push(companyCode);
-    }
-
-    if (orClauses.length > 0) {
-      sql += ` AND (${orClauses.join(' OR ')})`;
+    } else if (truckNo) {
+      sql += ` AND trk.truck_no = ?`;
+      params.push(truckNo);
     }
 
     sql += ` ORDER BY s.settlement_date ASC, s.created_at ASC`;

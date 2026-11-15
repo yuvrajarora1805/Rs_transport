@@ -50,9 +50,8 @@ function SettlementForm() {
             if (ta > 0) setForm((p) => ({ ...p, advanceAmount: ta.toFixed(2) }));
           }
           const trkId = details.truck_id || details.truck?.id;
-          const transpId = details.transporter_id || details.transporter?.id;
-          const compCode = details.company_code || (found as any)?.company_code;
-          const q = new URLSearchParams({ ...(trkId && { truckId: trkId }), ...(transpId && { transporterId: transpId }), ...(compCode && { companyCode: compCode }) });
+          const trkNo = details.truck?.truckNo || details.truck_no || found?.truck?.truckNo || (found as any)?.truck_no;
+          const q = new URLSearchParams({ ...(trkId && { truckId: trkId }), ...(trkNo && { truckNo: trkNo }) });
           let defRes = await apiFetch<PriorDeficitItem[]>(`/settlements/deficits?${q.toString()}`).catch(() => []);
           if (!defRes?.length && trkId) defRes = await apiFetch<PriorDeficitItem[]>(`/settlements/truck-deficits/${trkId}`).catch(() => []);
           const list = defRes || [];
