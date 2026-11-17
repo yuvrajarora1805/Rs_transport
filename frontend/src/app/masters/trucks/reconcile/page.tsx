@@ -12,6 +12,8 @@ import { Search } from 'lucide-react';
 export default function TruckReconcilePage() {
   const [data, setData] = useState<any>(null);
   const [partyData, setPartyData] = useState<any[]>([]);
+  const [partiesList, setPartiesList] = useState<string[]>([]);
+  const [selectedParty, setSelectedParty] = useState<string>('ALL');
   const [activeTab, setActiveTab] = useState<'excel' | 'party_summary'>('party_summary');
   const [loading, setLoading] = useState(true);
   const [partyLoading, setPartyLoading] = useState(false);
@@ -39,12 +41,24 @@ export default function TruckReconcilePage() {
     }
   };
 
-  const loadPartySummary = async (queryTruck?: string) => {
+  const loadParties = async () => {
+    try {
+      const res = await apiFetch<string[]>('/masters/trucks/reconcile/parties');
+      if (res && Array.isArray(res)) setPartiesList(res);
+    } catch (err) {
+      console.warn('Notice while loading parties:', err);
+    }
+  };
+
+  const loadPartySummary = async (queryTruck?: string, partyFilter?: string) => {
     setPartyLoading(true);
     try {
-      const endpoint = queryTruck
-        ? `/masters/trucks/reconcile/party-summary?truckNo=${encodeURIComponent(queryTruck)}`
-        : '/masters/trucks/reconcile/party-summary';
+      const p = partyFilter !== undefined ? partyFilter : selectedParty;
+      const t = queryTruck !== undefined ? queryTruck : searchTruck;
+      const params = new URLSearchParams();
+      if (t) params.set('truckNo', t);
+      if (p && p !== 'ALL') params.set('partyName', p);
+      const endpoint = `/masters/trucks/reconcile/party-summary?${params.toString()}`;
       const res = await apiFetch<any[]>(endpoint);
       setPartyData(res || []);
     } catch (err) {
@@ -56,8 +70,10 @@ export default function TruckReconcilePage() {
 
   useEffect(() => {
     loadSummary();
+    loadParties();
     loadPartySummary();
   }, []);
+
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -171,7 +187,18 @@ export default function TruckReconcilePage() {
           </form>
         </div>
 
-        {activeTab === 'party_summary' && <TruckPartySummaryView data={partyData} loading={partyLoading} />}
+        {activeTab === 'party_summary' && (
+          <TruckPartySummaryView
+            data={partyData}
+            loading={partyLoading}
+            partiesList={partiesList}
+            selectedParty={selectedParty}
+            onSelectParty={(party) => {
+              setSelectedParty(party);
+              loadPartySummary(undefined, party);
+            }}
+          />
+        )}
 
         {activeTab === 'excel' && (
           <TruckReconcileTable

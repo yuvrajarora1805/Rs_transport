@@ -1,8 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { DbService } from '../../db/db.service';
-import * as ExcelJS from 'exceljs';
-import * as path from 'path';
-import * as fs from 'fs';
 
 export interface TruckPartyGroup {
   truckNo: string;
@@ -30,7 +27,7 @@ export class TrucksPartyLookupService {
 
   constructor(private db: DbService) {}
 
-  async getTruckPartySummary(truckNo?: string): Promise<TruckPartyGroup[]> {
+  async getTruckPartySummary(truckNo?: string, partyName?: string): Promise<TruckPartyGroup[]> {
     let sql = `
       SELECT 
         trk.truck_no, trk.owner_name,
@@ -62,6 +59,10 @@ export class TrucksPartyLookupService {
       const cleanNo = truckNo.trim().toUpperCase().replace(/\s+/g, '');
       sql += ` AND trk.truck_no LIKE ?`;
       params.push(`%${cleanNo}%`);
+    }
+    if (partyName && partyName.trim() && partyName !== 'ALL') {
+      sql += ` AND (p.name = ? OR (p.name IS NULL AND ? = 'Direct / Self'))`;
+      params.push(partyName.trim(), partyName.trim());
     }
     sql += ` ORDER BY trk.truck_no ASC, party_name ASC, unloading_date DESC`;
 
@@ -126,4 +127,15 @@ export class TrucksPartyLookupService {
 
     return result;
   }
+
+  async getDistinctParties(): Promise<string[]> {
+    const res = await this.db.query(`
+      SELECT DISTINCT COALESCE(p.name, 'Direct / Self') as party_name
+      FROM trips t
+      LEFT JOIN parties p ON t.party_id = p.id
+      ORDER BY party_name ASC
+    `);
+    return (res.rows as any[]).map((r) => r.party_name);
+  }
 }
+

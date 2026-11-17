@@ -8,34 +8,88 @@ import { Badge } from '../../../../components/ui/Badge';
 interface Props {
   data: any[];
   loading: boolean;
+  partiesList?: string[];
+  selectedParty?: string;
+  onSelectParty?: (party: string) => void;
 }
 
-export const TruckPartySummaryView: React.FC<Props> = ({ data, loading }) => {
+export const TruckPartySummaryView: React.FC<Props> = ({
+  data,
+  loading,
+  partiesList = [],
+  selectedParty = 'ALL',
+  onSelectParty,
+}) => {
   const [expandedTrucks, setExpandedTrucks] = useState<Record<string, boolean>>({});
 
   const toggleTruck = (truckNo: string) => {
     setExpandedTrucks((prev) => ({ ...prev, [truckNo]: !prev[truckNo] }));
   };
 
-  if (loading) {
-    return (
-      <div className="bg-white p-8 rounded-xl border border-slate-200 text-center text-xs text-slate-500">
-        Loading truck-to-party summary...
-      </div>
-    );
-  }
+  const expandAll = () => {
+    const all: Record<string, boolean> = {};
+    data.forEach((item) => {
+      all[item.truckNo] = true;
+    });
+    setExpandedTrucks(all);
+  };
 
-  if (!data || data.length === 0) {
-    return (
-      <div className="bg-white p-8 rounded-xl border border-slate-200 text-center text-xs text-slate-500">
-        No trips or party activity recorded for this truck yet.
-      </div>
-    );
-  }
+  const collapseAll = () => {
+    setExpandedTrucks({});
+  };
 
   return (
     <div className="space-y-4">
-      {data.map((item) => {
+      {/* Party Filter & Control Bar */}
+      <div className="bg-white p-3.5 rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-3 text-xs">
+        <div className="flex items-center gap-2">
+          <span className="font-semibold text-slate-700">Filter by Party:</span>
+          <select
+            value={selectedParty}
+            onChange={(e) => onSelectParty && onSelectParty(e.target.value)}
+            className="border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs bg-slate-50 font-medium text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="ALL">All Parties ({partiesList.length})</option>
+            {partiesList.map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={expandAll}
+            className="px-2.5 py-1 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded text-[11px] font-semibold transition-colors"
+          >
+            Expand All
+          </button>
+          <button
+            onClick={collapseAll}
+            className="px-2.5 py-1 text-slate-600 bg-slate-100 hover:bg-slate-200 rounded text-[11px] font-semibold transition-colors"
+          >
+            Collapse All
+          </button>
+        </div>
+      </div>
+
+      {loading && (
+        <div className="bg-white p-8 rounded-xl border border-slate-200 text-center text-xs text-slate-500">
+          Loading truck-to-party summary...
+        </div>
+      )}
+
+      {!loading && (!data || data.length === 0) && (
+        <div className="bg-white p-8 rounded-xl border border-slate-200 text-center text-xs text-slate-500">
+          No trips or party activity recorded for this selection.
+        </div>
+      )}
+
+      {!loading &&
+        data &&
+        data.map((item) => {
+
         const isExpanded = !!expandedTrucks[item.truckNo];
         return (
           <div

@@ -36,10 +36,18 @@ export const TruckReconcileTable: React.FC<Props> = ({
       render: (row) => <span className="font-bold text-slate-900 tracking-wide">{row.truckNo}</span>,
     },
     { key: 'source', header: 'Source', render: (row) => row.source },
-    { key: 'destination', header: 'Destination', render: (row) => row.destination || '-' },
+    {
+      key: 'destination',
+      header: 'Destination / Party',
+      render: (row) => (
+        <div>
+          <div className="font-medium text-slate-800">{row.destination || '-'}</div>
+          {row.mobileNo && <div className="text-[11px] text-slate-400">{row.mobileNo}</div>}
+        </div>
+      ),
+    },
     { key: 'bales', header: 'Bales', render: (row) => row.bales || '-' },
     { key: 'date', header: 'Date', render: (row) => row.date || '-' },
-    { key: 'mobileNo', header: 'Contact', render: (row) => row.mobileNo || '-' },
     {
       key: 'status',
       header: 'Registry Status',
@@ -52,19 +60,19 @@ export const TruckReconcileTable: React.FC<Props> = ({
     },
     {
       key: 'action',
-      header: 'Action',
+      header: 'Action / Party Activity',
       render: (row) =>
         row.systemTruckId ? (
           <button
             onClick={() => onSelectTruck(row.truckNo)}
-            className="text-xs font-semibold text-blue-600 hover:text-blue-800 hover:underline"
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-blue-50 text-xs font-semibold text-blue-600 hover:bg-blue-100 hover:text-blue-800 transition-colors"
           >
             Party Breakdown →
           </button>
         ) : (
           <Link
             href="/masters/trucks/new"
-            className="text-xs font-semibold text-emerald-600 hover:text-emerald-800 hover:underline"
+            className="inline-flex items-center gap-1 px-2.5 py-1 rounded bg-emerald-50 text-xs font-semibold text-emerald-600 hover:bg-emerald-100 hover:text-emerald-800 transition-colors"
           >
             + Register
           </Link>

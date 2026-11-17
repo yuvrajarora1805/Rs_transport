@@ -26,9 +26,15 @@ export class TrucksController {
   }
 
   @Get('reconcile/party-summary')
-  getTruckPartySummary(@Query('truckNo') truckNo?: string) {
-    return this.partyLookupService.getTruckPartySummary(truckNo);
+  getTruckPartySummary(@Query('truckNo') truckNo?: string, @Query('partyName') partyName?: string) {
+    return this.partyLookupService.getTruckPartySummary(truckNo, partyName);
   }
+
+  @Get('reconcile/parties')
+  getReconcileParties() {
+    return this.partyLookupService.getDistinctParties();
+  }
+
 
   @Post('reconcile/upload')
   @UseInterceptors(FileInterceptor('file'))
