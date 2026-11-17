@@ -1,17 +1,21 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Header } from '../../../components/layout/Header';
 import { DataTable, Column } from '../../../components/ui/DataTable';
 import { Badge } from '../../../components/ui/Badge';
-import { apiFetch, formatDate } from '../../../lib/api';
+import { apiFetch, formatDate, getApiBase } from '../../../lib/api';
 import { Truck } from '../../../types';
-import { PlusCircle, FileSpreadsheet } from 'lucide-react';
+import { PlusCircle, FileSpreadsheet, Upload } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export default function TrucksPage() {
   const [trucks, setTrucks] = useState<Truck[]>([]);
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
 
   useEffect(() => {
     async function loadTrucks() {
@@ -26,6 +30,31 @@ export default function TrucksPage() {
     }
     loadTrucks();
   }, []);
+
+  const handleQuickUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const token = typeof window !== 'undefined' ? localStorage.getItem('rs_token') : null;
+      const res = await fetch(`${getApiBase()}/masters/trucks/reconcile/upload`, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      });
+      if (!res.ok) throw new Error('Failed to parse uploaded Excel');
+      router.push('/masters/trucks/reconcile');
+    } catch (err: any) {
+      alert(`Upload error: ${err.message || 'Could not parse Excel workbook'}`);
+    } finally {
+      setUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
 
   const columns: Column<Truck>[] = [
     {
@@ -92,6 +121,21 @@ export default function TrucksPage() {
         subtitle="Permanent Vehicle Master, Ownership & Transporter Affiliations"
         actions={
           <div className="flex items-center gap-2">
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleQuickUpload}
+              accept=".xlsx,.xls"
+              className="hidden"
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploading}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors shadow-xs disabled:opacity-50"
+            >
+              <Upload size={14} className="text-blue-600" />
+              {uploading ? 'Analyzing...' : 'Upload Excel'}
+            </button>
             <Link
               href="/masters/trucks/reconcile"
               className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors shadow-xs"
