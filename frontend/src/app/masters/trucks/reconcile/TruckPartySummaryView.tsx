@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { formatCurrency, formatDate } from '../../../../lib/api';
+import { formatCurrency } from '../../../../lib/api';
 import { ChevronDown, ChevronRight, Truck, User, MapPin } from 'lucide-react';
-import { Badge } from '../../../../components/ui/Badge';
+import { TruckPartyTripsTable } from './TruckPartyTripsTable';
+import { TripPaymentDrawer } from './TripPaymentDrawer';
 
 interface Props {
   data: any[];
@@ -21,6 +22,7 @@ export const TruckPartySummaryView: React.FC<Props> = ({
   onSelectParty,
 }) => {
   const [expandedTrucks, setExpandedTrucks] = useState<Record<string, boolean>>({});
+  const [activeModalTrip, setActiveModalTrip] = useState<{ trip: any; truckNo: string; partyName: string } | null>(null);
 
   const toggleTruck = (truckNo: string) => {
     setExpandedTrucks((prev) => ({ ...prev, [truckNo]: !prev[truckNo] }));
@@ -37,6 +39,7 @@ export const TruckPartySummaryView: React.FC<Props> = ({
   const collapseAll = () => {
     setExpandedTrucks({});
   };
+
 
   return (
     <div className="space-y-4">
@@ -181,43 +184,15 @@ export const TruckPartySummaryView: React.FC<Props> = ({
                       </div>
                     </div>
 
-                    {/* Nested Trips Table */}
-                    <div className="overflow-x-auto bg-white rounded-lg border border-slate-200">
-                      <table className="w-full text-left text-xs">
-                        <thead className="bg-slate-100/70 text-slate-600 font-semibold border-b border-slate-200">
-                          <tr>
-                            <th className="py-2 px-3">Trip No</th>
-                            <th className="py-2 px-3">Unload Date</th>
-                            <th className="py-2 px-3">Weight (MT)</th>
-                            <th className="py-2 px-3">Rate (₹)</th>
-                            <th className="py-2 px-3">Gross Freight</th>
-                            <th className="py-2 px-3">Diesel Deductions</th>
-                            <th className="py-2 px-3">Paid Amount</th>
-                            <th className="py-2 px-3">Pending</th>
-                            <th className="py-2 px-3">Status</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100 text-slate-700">
-                          {p.trips.map((t: any, tIdx: number) => (
-                            <tr key={`${t.trip_id || 'trip'}-${tIdx}`} className="hover:bg-slate-50">
-                              <td className="py-2 px-3 font-semibold text-blue-600">{t.trip_no}</td>
-                              <td className="py-2 px-3">{formatDate(t.unloading_date)}</td>
-                              <td className="py-2 px-3">{Number(t.net_weight || 0).toFixed(2)} MT</td>
-                              <td className="py-2 px-3">₹{Number(t.rate_per_unit || 0).toFixed(2)}</td>
-                              <td className="py-2 px-3 font-semibold">{formatCurrency(Number(t.gross_freight))}</td>
-                              <td className="py-2 px-3 text-amber-700 font-medium">{formatCurrency(Number(t.diesel_amount))}</td>
-                              <td className="py-2 px-3 text-emerald-600 font-medium">{formatCurrency(Number(t.total_paid))}</td>
-                              <td className="py-2 px-3 font-bold text-rose-600">{formatCurrency(Number(t.outstanding))}</td>
-                              <td className="py-2 px-3">
-                                <Badge variant={t.settlement_status === 'PAID' ? 'success' : t.settlement_id ? 'info' : 'neutral'}>
-                                  {t.settlement_status || 'PENDING'}
-                                </Badge>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                    {/* Nested Trips Table with Settlement & Payment action */}
+                    <TruckPartyTripsTable
+                      trips={p.trips}
+                      truckNo={item.truckNo}
+                      partyName={p.partyName}
+                      onOpenTripModal={(trip, truckNo, partyName) =>
+                        setActiveModalTrip({ trip, truckNo, partyName })
+                      }
+                    />
                   </div>
                 ))}
               </div>
@@ -225,6 +200,16 @@ export const TruckPartySummaryView: React.FC<Props> = ({
           </div>
         );
       })}
+
+      {/* Settlement & Payment Summary Modal Drawer */}
+      {activeModalTrip && (
+        <TripPaymentDrawer
+          trip={activeModalTrip.trip}
+          truckNo={activeModalTrip.truckNo}
+          partyName={activeModalTrip.partyName}
+          onClose={() => setActiveModalTrip(null)}
+        />
+      )}
     </div>
   );
 };
