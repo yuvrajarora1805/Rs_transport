@@ -33,9 +33,6 @@ export class TrucksReconciliationService {
 
   constructor(private db: DbService) {}
 
-  /**
-   * Parses uploaded Excel in memory without saving to disk.
-   */
   async reconcileExcelBuffer(buffer: Buffer, fileName: string = 'Uploaded Excel'): Promise<TruckReconSummary> {
     const wb = new ExcelJS.Workbook();
     await wb.xlsx.load(buffer as any);
@@ -91,44 +88,60 @@ export class TrucksReconciliationService {
       const sourceName = ws.name.trim().toUpperCase();
       if (!sourceName || ws.rowCount < 2) continue;
 
-      let startRow = 3;
-      let hasSrCol = true;
-      const r1c1 = String(ws.getRow(1).getCell(1).value || '').trim().toUpperCase();
-      const r2c1 = String(ws.getRow(2).getCell(1).value || '').trim().toUpperCase();
+      // Scan rows 1..5 to find header
+      let headerRowIdx = 1;
+      let truckColIdx = -1;
+      let dateColIdx = -1;
+      let balesColIdx = -1;
+      let destColIdx = -1;
+      let contactColIdx = -1;
 
-      if (r1c1 === 'DATE' || r1c1 === 'TRUCK NO.' || r1c1 === 'TRUCK NO') {
-        startRow = 2;
-        hasSrCol = false;
-      } else if (r2c1 === 'DATE') {
-        startRow = 3;
-        hasSrCol = false;
+      for (let scanR = 1; scanR <= Math.min(5, ws.rowCount); scanR++) {
+        const row = ws.getRow(scanR);
+        for (let col = 1; col <= 20; col++) {
+          const val = String(row.getCell(col).value || '').trim().toUpperCase();
+          if ((val.includes('TRUCK') || val.includes('VEHICLE')) && !val.includes('TYPE')) {
+            truckColIdx = col;
+            headerRowIdx = scanR;
+          }
+          if (val === 'DATE' || val.includes('UN. DATE') || val.includes('DISPATCH DATE')) dateColIdx = col;
+          if (val.includes('BALE') || val.includes('WEIGHT') || val.includes('QTY')) balesColIdx = col;
+          if (val.includes('PLACE') || val.includes('DEST') || val.includes('PARTY')) destColIdx = col;
+          if (val.includes('MOBILE') || val.includes('CONTACT') || val.includes('MALIK') || val.includes('OWNER')) contactColIdx = col;
+        }
+        if (truckColIdx > 0) break;
       }
 
-      for (let r = startRow; r <= ws.rowCount; r++) {
-        const row = ws.getRow(r);
-        let dateVal: any = null;
-        let truckNoRaw = '';
-        let balesVal: any = null;
-        let mobileVal = '';
-        let destVal = '';
+      // Fallback defaults if no header text found
+      if (truckColIdx === -1) {
+        truckColIdx = 3;
+        dateColIdx = 2;
+        balesColIdx = 4;
+        contactColIdx = 5;
+        destColIdx = 6;
+        headerRowIdx = 2;
+      }
 
-        if (hasSrCol) {
-          dateVal = row.getCell(2).value;
-          truckNoRaw = String(row.getCell(3).value || '').trim();
-          balesVal = row.getCell(4).value;
-          mobileVal = String(row.getCell(5).value || '').trim();
-          destVal = String(row.getCell(6).value || '').trim();
-        } else {
-          dateVal = row.getCell(1).value;
-          truckNoRaw = String(row.getCell(2).value || '').trim();
-          balesVal = row.getCell(3).value;
-          mobileVal = String(row.getCell(4).value || '').trim();
-          destVal = String(row.getCell(5).value || '').trim();
+      for (let r = headerRowIdx + 1; r <= ws.rowCount; r++) {
+        const row = ws.getRow(r);
+        const truckCellVal = row.getCell(truckColIdx).value;
+        if (!truckCellVal) continue;
+
+        // Skip Date objects or timestamps that landed in truck column
+        if (truckCellVal instanceof Date) continue;
+
+        let truckNoRaw = String(truckCellVal).trim();
+        if (truckNoRaw.includes('GMT+') || truckNoRaw.includes('Standard Time') || truckNoRaw.includes('T00:00:00')) {
+          continue;
         }
 
-        if (!truckNoRaw) continue;
         const truckNo = truckNoRaw.toUpperCase().replace(/\s+/g, '');
-        if (truckNo === 'TOTAL' || truckNo === 'SRNO' || !/[0-9]/.test(truckNo)) continue;
+        if (truckNo === 'TOTAL' || truckNo === 'SRNO' || truckNo === 'TRUCKNO' || !/[0-9]/.test(truckNo)) continue;
+
+        const dateVal = dateColIdx > 0 ? row.getCell(dateColIdx).value : null;
+        const balesVal = balesColIdx > 0 ? row.getCell(balesColIdx).value : null;
+        const contactVal = contactColIdx > 0 ? String(row.getCell(contactColIdx).value || '').trim() : '';
+        const destVal = destColIdx > 0 ? String(row.getCell(destColIdx).value || '').trim() : '';
 
         const bales = typeof balesVal === 'number' ? balesVal : parseFloat(String(balesVal)) || 0;
         totalBales += bales;
@@ -143,11 +156,16 @@ export class TrucksReconciliationService {
         destStats.set(cleanDest, (destStats.get(cleanDest) || 0) + 1);
 
         const systemMatch = systemMap.get(truckNo);
-        const dateStr = dateVal instanceof Date ? dateVal.toISOString().split('T')[0] : String(dateVal || '');
+        let dateStr = '-';
+        if (dateVal instanceof Date) {
+          dateStr = dateVal.toISOString().split('T')[0];
+        } else if (dateVal) {
+          dateStr = String(dateVal).split('T')[0];
+        }
 
         items.push({
           truckNo,
-          mobileNo: mobileVal,
+          mobileNo: contactVal,
           source: sourceName,
           destination: destVal || '-',
           bales,
