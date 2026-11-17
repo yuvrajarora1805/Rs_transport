@@ -36,7 +36,8 @@ export class TrucksController {
     if (!file || !file.buffer) {
       throw new BadRequestException('Please provide an Excel file (.xlsx)');
     }
-    return this.reconService.reconcileExcelBuffer(file.buffer);
+    const origName = file.originalname || 'Uploaded Workbook';
+    return this.reconService.reconcileExcelBuffer(file.buffer, origName);
   }
 
   @Get()

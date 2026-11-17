@@ -5,6 +5,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 
 export interface TruckReconSummary {
+  uploadedFileName?: string;
   totalRows: number;
   distinctTrucks: number;
   matchedInSystem: number;
@@ -32,10 +33,13 @@ export class TrucksReconciliationService {
 
   constructor(private db: DbService) {}
 
-  async reconcileExcelBuffer(buffer: Buffer): Promise<TruckReconSummary> {
+  /**
+   * Parses uploaded Excel in memory without saving to disk.
+   */
+  async reconcileExcelBuffer(buffer: Buffer, fileName: string = 'Uploaded Excel'): Promise<TruckReconSummary> {
     const wb = new ExcelJS.Workbook();
     await wb.xlsx.load(buffer as any);
-    return this.processWorkbook(wb);
+    return this.processWorkbook(wb, fileName);
   }
 
   async reconcileDefaultFile(): Promise<TruckReconSummary> {
@@ -43,15 +47,24 @@ export class TrucksReconciliationService {
     const p1 = path.join(process.cwd(), '..', 'TRUCK DETAILS.xlsx');
     const filePath = fs.existsSync(p2) ? p2 : p1;
     if (!fs.existsSync(filePath)) {
-      throw new Error('Default Excel file not found on server');
+      return {
+        uploadedFileName: 'No default workbook found',
+        totalRows: 0,
+        distinctTrucks: 0,
+        matchedInSystem: 0,
+        missingInSystem: 0,
+        totalBales: 0,
+        sourcesBreakdown: [],
+        destinationsBreakdown: [],
+        trucks: [],
+      };
     }
     const wb = new ExcelJS.Workbook();
     await wb.xlsx.readFile(filePath);
-    return this.processWorkbook(wb);
+    return this.processWorkbook(wb, path.basename(filePath));
   }
 
-  private async processWorkbook(wb: ExcelJS.Workbook): Promise<TruckReconSummary> {
-    // 1. Fetch system trucks and trip counts
+  private async processWorkbook(wb: ExcelJS.Workbook, fileName: string): Promise<TruckReconSummary> {
     const systemTrucksRes = await this.db.query(`
       SELECT trk.id, trk.truck_no, trk.owner_name, trk.mobile_no,
              COUNT(DISTINCT d.id) as dispatch_count,
@@ -153,6 +166,7 @@ export class TrucksReconciliationService {
     }
 
     return {
+      uploadedFileName: fileName,
       totalRows: items.length,
       distinctTrucks: seenTruckNos.size,
       matchedInSystem: matchedCount,

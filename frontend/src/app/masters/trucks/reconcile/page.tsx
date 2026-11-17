@@ -140,6 +140,7 @@ export default function TruckReconcilePage() {
     <div className="pb-12">
       <TruckReconcileTopBar
         uploading={uploading}
+        fileName={data?.uploadedFileName}
         fileInputRef={fileInputRef}
         handleFileUpload={handleFileUpload}
       />
