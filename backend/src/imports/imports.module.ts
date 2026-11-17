@@ -3,9 +3,10 @@ import { ImportsService } from './imports.service';
 import { ImportsPumpsService } from './imports-pumps.service';
 import { ImportsSettlementsService } from './imports-settlements.service';
 import { ImportsController } from './imports.controller';
+import { ImportsExportController } from './imports-export.controller';
 
 @Module({
-  controllers: [ImportsController],
+  controllers: [ImportsController, ImportsExportController],
   providers: [ImportsService, ImportsPumpsService, ImportsSettlementsService],
   exports: [ImportsService, ImportsPumpsService, ImportsSettlementsService],
 })

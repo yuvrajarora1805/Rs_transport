@@ -11,12 +11,16 @@ export class ImportsService {
 
   constructor(private db: DbService) {}
 
-  async importTruckDetails(): Promise<{ success: boolean; imported: number; errors: number }> {
-    const filePath = path.join(process.cwd(), '..', 'TRUCK DETAILS.xlsx');
-    if (!fs.existsSync(filePath)) {
-      throw new Error(`File TRUCK DETAILS.xlsx not found at ${filePath}`);
-    }
+  private resolveTruckFilePath(): string {
+    const p2 = path.join(process.cwd(), '..', 'TRUCK DETAILS (2).xlsx');
+    if (fs.existsSync(p2)) return p2;
+    const p1 = path.join(process.cwd(), '..', 'TRUCK DETAILS.xlsx');
+    if (fs.existsSync(p1)) return p1;
+    throw new Error('Neither TRUCK DETAILS (2).xlsx nor TRUCK DETAILS.xlsx found');
+  }
 
+  async importTruckDetails(): Promise<{ success: boolean; imported: number; errors: number }> {
+    const filePath = this.resolveTruckFilePath();
     const wb = new ExcelJS.Workbook();
     await wb.xlsx.readFile(filePath);
     let imported = 0;
@@ -24,7 +28,8 @@ export class ImportsService {
 
     for (const ws of wb.worksheets) {
       const sourceName = ws.name.trim().toUpperCase();
-      // Ensure source exists
+      if (!sourceName || ws.rowCount < 2) continue;
+
       let sourceRes = await this.db.query('SELECT id FROM sources WHERE name = ?', [sourceName]);
       let sourceId = sourceRes.rows[0]?.id;
       if (!sourceId) {
@@ -32,22 +37,49 @@ export class ImportsService {
         await this.db.query('INSERT INTO sources (id, name) VALUES (?, ?)', [sourceId, sourceName]);
       }
 
-      for (let rowIdx = 3; rowIdx <= ws.rowCount; rowIdx++) {
+      // Check header row (row 1 or 2)
+      let startRow = 3;
+      let hasSrCol = true;
+      const r1c1 = String(ws.getRow(1).getCell(1).value || '').trim().toUpperCase();
+      const r2c1 = String(ws.getRow(2).getCell(1).value || '').trim().toUpperCase();
+
+      if (r1c1 === 'DATE' || r1c1 === 'TRUCK NO.' || r1c1 === 'TRUCK NO') {
+        startRow = 2;
+        hasSrCol = false;
+      } else if (r2c1 === 'DATE') {
+        startRow = 3;
+        hasSrCol = false;
+      }
+
+      for (let rowIdx = startRow; rowIdx <= ws.rowCount; rowIdx++) {
         const row = ws.getRow(rowIdx);
-        const srNo = String(row.getCell(1).value || '').trim();
-        const dateVal = row.getCell(2).value;
-        const truckNoRaw = String(row.getCell(3).value || '').trim();
-        const balesVal = row.getCell(4).value;
-        const mobileVal = String(row.getCell(5).value || '').trim();
-        const destVal = String(row.getCell(6).value || '').trim();
+        let srNo = '';
+        let dateVal: any = null;
+        let truckNoRaw = '';
+        let balesVal: any = null;
+        let mobileVal = '';
+        let destVal = '';
+
+        if (hasSrCol) {
+          srNo = String(row.getCell(1).value || '').trim();
+          dateVal = row.getCell(2).value;
+          truckNoRaw = String(row.getCell(3).value || '').trim();
+          balesVal = row.getCell(4).value;
+          mobileVal = String(row.getCell(5).value || '').trim();
+          destVal = String(row.getCell(6).value || '').trim();
+        } else {
+          dateVal = row.getCell(1).value;
+          truckNoRaw = String(row.getCell(2).value || '').trim();
+          balesVal = row.getCell(3).value;
+          mobileVal = String(row.getCell(4).value || '').trim();
+          destVal = String(row.getCell(5).value || '').trim();
+        }
 
         if (!truckNoRaw) continue;
         const truckNo = truckNoRaw.toUpperCase().replace(/\s+/g, '');
-        // Filter out summary/total rows or headers
         if (truckNo === 'TOTAL' || truckNo === 'SRNO' || !/[0-9]/.test(truckNo)) continue;
 
         try {
-          // 1. Ensure truck exists
           let truckRes = await this.db.query('SELECT id FROM trucks WHERE truck_no = ?', [truckNo]);
           let truckId = truckRes.rows[0]?.id;
           if (!truckId) {
@@ -58,7 +90,6 @@ export class ImportsService {
             );
           }
 
-          // 2. Insert dispatch
           const dispatchDate = dateVal instanceof Date ? dateVal : new Date();
           const bales = typeof balesVal === 'number' ? balesVal : parseFloat(String(balesVal)) || null;
 
@@ -74,7 +105,7 @@ export class ImportsService {
       }
     }
 
-    this.logger.log(`Truck details import: ${imported} dispatches imported, ${errors} errors`);
+    this.logger.log(`Truck details import: ${imported} dispatches imported, ${errors} errors from ${filePath}`);
     return { success: true, imported, errors };
   }
 
@@ -96,4 +127,3 @@ export class ImportsService {
     };
   }
 }
-

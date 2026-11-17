@@ -26,7 +26,6 @@ export class ImportsSettlementsService {
       if (ws.name === 'RAW' || ws.rowCount < 2) continue;
       const destName = ws.name.trim().toUpperCase();
 
-      // Destination
       let dRes = await this.db.query('SELECT id FROM destinations WHERE name = ?', [destName]);
       let destId = dRes.rows[0]?.id;
       if (!destId) {
@@ -34,18 +33,40 @@ export class ImportsSettlementsService {
         await this.db.query('INSERT INTO destinations (id, name) VALUES (?, ?)', [destId, destName]);
       }
 
+      // Detect header columns
+      const headerRow = ws.getRow(1);
+      const headers: string[] = [];
+      for (let c = 1; c <= 15; c++) {
+        headers.push(String(headerRow.getCell(c).value || '').trim().toUpperCase());
+      }
+
+      const partyColIdx = headers.findIndex(h => h === 'PARTY' || h.includes('PARTY')) + 1;
+      const wtColIdx = headers.findIndex(h => h.includes('WIEGHT') || h.includes('WEIGHT')) + 1;
+      const rateColIdx = headers.findIndex(h => h === 'RATE') + 1;
+      const advColIdx = headers.findIndex(h => h.includes('ADVANCE')) + 1;
+      const dieselColIdx = headers.findIndex(h => h === 'DIESEL') + 1;
+      const commColIdx = headers.findIndex(h => h.includes('COMISION') || h.includes('COMMISSION')) + 1;
+      const payColIdx = headers.findIndex(h => h === 'PAY') + 1;
+
       for (let r = 2; r <= ws.rowCount; r++) {
         const row = ws.getRow(r);
-        const dateVal = row.getCell(1).value || row.getCell(3).value;
-        const srVal = String(row.getCell(2).value || '').trim();
+        const dateVal = row.getCell(1).value || row.getCell(2).value || row.getCell(3).value;
+        const srVal = String(row.getCell(2).value || row.getCell(1).value || '').trim();
         const truckVal = String(row.getCell(3).value || row.getCell(4).value || '').trim();
-        const partyVal = String(row.getCell(5).value || '').trim();
-        const wtVal = row.getCell(6).value || row.getCell(7).value;
-        const rateVal = row.getCell(7).value || row.getCell(8).value;
-        const advVal = row.getCell(8).value || row.getCell(9).value;
-        const dieselVal = row.getCell(9).value || row.getCell(10).value;
-        const commVal = row.getCell(11).value || row.getCell(12).value;
-        const pmtVal = String(row.getCell(13).value || row.getCell(14).value || '').trim();
+        
+        let partyVal = '';
+        if (partyColIdx > 0) {
+          partyVal = String(row.getCell(partyColIdx).value || '').trim();
+        } else {
+          partyVal = String(row.getCell(5).value || row.getCell(6).value || '').trim();
+        }
+
+        const wtVal = wtColIdx > 0 ? row.getCell(wtColIdx).value : (row.getCell(6).value || row.getCell(7).value);
+        const rateVal = rateColIdx > 0 ? row.getCell(rateColIdx).value : (row.getCell(7).value || row.getCell(8).value);
+        const advVal = advColIdx > 0 ? row.getCell(advColIdx).value : (row.getCell(8).value || row.getCell(9).value);
+        const dieselVal = dieselColIdx > 0 ? row.getCell(dieselColIdx).value : (row.getCell(9).value || row.getCell(10).value);
+        const commVal = commColIdx > 0 ? row.getCell(commColIdx).value : (row.getCell(11).value || row.getCell(12).value);
+        const pmtVal = payColIdx > 0 ? String(row.getCell(payColIdx).value || '').trim() : String(row.getCell(13).value || row.getCell(14).value || '').trim();
 
         if (!truckVal) continue;
         const truckNo = truckVal.toUpperCase().replace(/\s+/g, '');
@@ -54,7 +75,6 @@ export class ImportsSettlementsService {
         if (weight <= 0 || rate <= 0) continue;
 
         try {
-          // Truck
           let tRes = await this.db.query('SELECT id FROM trucks WHERE truck_no = ?', [truckNo]);
           let truckId = tRes.rows[0]?.id;
           if (!truckId) {
@@ -62,14 +82,13 @@ export class ImportsSettlementsService {
             await this.db.query('INSERT INTO trucks (id, truck_no) VALUES (?, ?)', [truckId, truckNo]);
           }
 
-          // Party
           let partyId: string | null = null;
-          if (partyVal) {
+          if (partyVal && !partyVal.replace('.', '').match(/^\d+$/)) {
             let pRes = await this.db.query('SELECT id FROM parties WHERE name = ?', [partyVal]);
             partyId = pRes.rows[0]?.id;
             if (!partyId) {
               partyId = uuidv4();
-              await this.db.query('INSERT INTO parties (id, name) VALUES (?, ?)', [partyId, partyVal]);
+              await this.db.query('INSERT INTO parties (id, name, destination_id) VALUES (?, ?, ?)', [partyId, partyVal, destId]);
             }
           }
 
@@ -80,7 +99,7 @@ export class ImportsSettlementsService {
           const net = gross - advance - diesel - comm;
 
           const tripId = uuidv4();
-          const tripNo = srVal ? `SR-${srVal}` : `TRP-${Math.floor(10000 + Math.random() * 90000)}`;
+          const tripNo = srVal && srVal !== 'TOTAL' ? `SR-${srVal}` : `TRP-${Math.floor(10000 + Math.random() * 90000)}`;
 
           await this.db.query(
             `INSERT INTO trips (id, trip_no, truck_id, destination_id, party_id, net_weight, rate_per_unit, gross_freight, company_code)
@@ -120,9 +139,7 @@ export class ImportsSettlementsService {
             );
           }
           count++;
-        } catch (e) {
-          // ignore row collisions
-        }
+        } catch (e) {}
       }
     }
 
@@ -130,4 +147,3 @@ export class ImportsSettlementsService {
     return { success: true, imported: count };
   }
 }
-

@@ -3,8 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import { Header } from '../../components/layout/Header';
 import { StatCard } from '../../components/ui/StatCard';
-import { apiFetch } from '../../lib/api';
-import { Database, FileSpreadsheet, CheckCircle2, ArrowRight } from 'lucide-react';
+import { apiFetch, getApiBase } from '../../lib/api';
+import { Database, FileSpreadsheet, Download, ArrowRight } from 'lucide-react';
 
 export default function MigrationPage() {
   const [status, setStatus] = useState<any>({
@@ -44,27 +44,41 @@ export default function MigrationPage() {
     }
   };
 
+  const downloadWorkbook = (downloadKey: string, filename: string) => {
+    const url = `${getApiBase()}/imports/download/${downloadKey}`;
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+  };
+
   const workbooks = [
     {
       key: 'trucks',
-      name: '1. TRUCK DETAILS.xlsx',
-      desc: '6 Booking Sources (Bittu Brar, Happy Sarpanch, DSBC, etc.) and departure slips.',
+      downloadKey: 'truck-details',
+      name: '1. TRUCK DETAILS (2).xlsx',
+      desc: '11 Booking Sources (Bittu Brar, Happy Sarpanch, DSBC, etc.) and departure slips.',
       endpoint: '/imports/truck-details',
     },
     {
       key: 'pumps',
+      downloadKey: 'pump-details',
       name: '2. pump details.xlsx',
       desc: '14 Petrol Pump accounts, diesel purchases and disbursements statement.',
       endpoint: '/imports/pump-details',
     },
     {
       key: 'rs_transport',
+      downloadKey: 'rs-transport',
       name: '3. RS TRANSPORT COMPANY (1).xlsx',
-      desc: 'Main company settlement registers (Chattargarh, Sardarshahar, Jasrasar).',
+      desc: 'Main company settlement registers (Chattargarh, Sardarshahar, Jasrasar, Sheets 4-10).',
       endpoint: '/imports/rs-transport',
     },
     {
       key: 'ranbir',
+      downloadKey: 'ranbir-logistics',
       name: '4. RANBIR LOGISTICS.xlsx',
       desc: 'Ranbir Logistics destination freight settlements (Bhadra, Mandrella).',
       endpoint: '/imports/ranbir-logistics',
@@ -75,7 +89,7 @@ export default function MigrationPage() {
     <div className="pb-12">
       <Header
         title="Excel Migration Center"
-        subtitle="Intake historical records from the 4 Transport Workbooks into MySQL"
+        subtitle="Download original workbooks or intake historical records into MySQL"
       />
 
       <div className="p-8 space-y-6 w-full">
@@ -102,20 +116,31 @@ export default function MigrationPage() {
           {workbooks.map((wb) => (
             <div
               key={wb.key}
-              className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs flex items-center justify-between"
+              className="bg-white rounded-xl border border-slate-200 p-5 shadow-xs flex items-center justify-between gap-4"
             >
               <div>
                 <h4 className="text-sm font-bold text-slate-900">{wb.name}</h4>
                 <p className="text-xs text-slate-500 mt-0.5">{wb.desc}</p>
               </div>
-              <button
-                onClick={() => runImport(wb.key, wb.endpoint)}
-                disabled={activeImport !== null}
-                className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-xs shrink-0"
-              >
-                {activeImport === wb.key ? 'Importing...' : 'Migrate Workbook'}
-                <ArrowRight size={14} />
-              </button>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => downloadWorkbook(wb.downloadKey, wb.name)}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-lg text-xs font-semibold transition-colors border border-slate-300 shadow-2xs"
+                >
+                  <Download size={14} />
+                  Download Excel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => runImport(wb.key, wb.endpoint)}
+                  disabled={activeImport !== null}
+                  className="flex items-center gap-1.5 px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-xs"
+                >
+                  {activeImport === wb.key ? 'Importing...' : 'Migrate Workbook'}
+                  <ArrowRight size={14} />
+                </button>
+              </div>
             </div>
           ))}
         </div>

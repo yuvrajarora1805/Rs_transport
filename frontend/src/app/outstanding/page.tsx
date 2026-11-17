@@ -6,6 +6,8 @@ import { DataTable, Column } from '../../components/ui/DataTable';
 import { StatCard } from '../../components/ui/StatCard';
 import { Badge } from '../../components/ui/Badge';
 import { apiFetch, formatCurrency, formatDate } from '../../lib/api';
+import Link from 'next/link';
+import { ArrowUpRight } from 'lucide-react';
 
 export default function OutstandingPage() {
   const [summary, setSummary] = useState<any>({
@@ -15,7 +17,7 @@ export default function OutstandingPage() {
     pumpOutstanding: [],
   });
   const [ageing, setAgeing] = useState<any>({ brackets: {}, allPending: [] });
-  const [activeTab, setActiveTab] = useState<'trucks' | 'transporters' | 'ageing'>('trucks');
+  const [activeTab, setActiveTab] = useState<'trucks' | 'parties' | 'ageing'>('trucks');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -37,9 +39,14 @@ export default function OutstandingPage() {
   }, []);
 
   const truckOutstandingList = Array.isArray(summary?.truckOutstanding) ? summary.truckOutstanding : [];
+  const partyOutstandingList = Array.isArray(summary?.partyOutstanding) ? summary.partyOutstanding : [];
   const ageingList = Array.isArray(ageing?.allPending) ? ageing.allPending : [];
 
   const totalTruckOutstanding = truckOutstandingList.reduce(
+    (acc: number, curr: any) => acc + Number(curr.outstanding_amount || 0),
+    0,
+  );
+  const totalPartyOutstanding = partyOutstandingList.reduce(
     (acc: number, curr: any) => acc + Number(curr.outstanding_amount || 0),
     0,
   );
@@ -57,6 +64,33 @@ export default function OutstandingPage() {
       header: 'Outstanding Balance',
       render: (row) => (
         <span className="font-bold text-rose-600">{formatCurrency(Number(row.outstanding_amount))}</span>
+      ),
+    },
+  ];
+
+  const partyColumns: Column<any>[] = [
+    {
+      key: 'party_name',
+      header: 'Party / Client Name',
+      render: (row) => <span className="font-bold text-slate-900">{row.party_name}</span>,
+    },
+    {
+      key: 'outstanding_amount',
+      header: 'Pending Balance',
+      render: (row) => (
+        <span className="font-bold text-rose-600">{formatCurrency(Number(row.outstanding_amount))}</span>
+      ),
+    },
+    {
+      key: 'actions',
+      header: 'Detailed Breakdown',
+      render: (row) => (
+        <Link
+          href={`/masters/parties/${row.party_id}`}
+          className="text-xs font-semibold text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1"
+        >
+          View Ledger <ArrowUpRight size={12} />
+        </Link>
       ),
     },
   ];
@@ -88,16 +122,22 @@ export default function OutstandingPage() {
     <div className="pb-12">
       <Header
         title="Outstanding & Ageing Management"
-        subtitle="Unpaid Freight Ledgers, Ageing Brackets & Recoverable Balances"
+        subtitle="Unpaid Freight Ledgers, Party Payables & Ageing Brackets"
       />
 
       <div className="p-4 sm:p-6 lg:p-8 space-y-4 sm:space-y-6 w-full">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <StatCard
-            title="Total Outstanding"
+            title="Total Truck Payables"
             value={formatCurrency(totalTruckOutstanding)}
-            subtitle="Freight payables remaining"
+            subtitle="Fleet freight payable"
             color="red"
+          />
+          <StatCard
+            title="Party Pending"
+            value={formatCurrency(totalPartyOutstanding)}
+            subtitle="Party balances"
+            color="purple"
           />
           <StatCard
             title="Pending Trucks"
@@ -113,7 +153,6 @@ export default function OutstandingPage() {
           />
         </div>
 
-        {/* Tab switcher */}
         <div className="flex border-b border-slate-200 gap-4 text-xs font-semibold">
           <button
             onClick={() => setActiveTab('trucks')}
@@ -124,6 +163,16 @@ export default function OutstandingPage() {
             }`}
           >
             Truck-wise Outstanding ({truckOutstandingList.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('parties')}
+            className={`pb-2.5 transition-colors ${
+              activeTab === 'parties'
+                ? 'border-b-2 border-blue-600 text-blue-600'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            Party-wise Pending ({partyOutstandingList.length})
           </button>
           <button
             onClick={() => setActiveTab('ageing')}
@@ -144,6 +193,16 @@ export default function OutstandingPage() {
             searchKey="truck_no"
             searchPlaceholder="Search truck..."
             emptyMessage="No outstanding truck balances"
+          />
+        )}
+
+        {activeTab === 'parties' && (
+          <DataTable
+            columns={partyColumns}
+            data={partyOutstandingList}
+            searchKey="party_name"
+            searchPlaceholder="Search party..."
+            emptyMessage="No outstanding party balances"
           />
         )}
 

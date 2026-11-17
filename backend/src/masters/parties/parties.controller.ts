@@ -13,6 +13,11 @@ export class PartiesController {
     return this.partiesService.create(dto);
   }
 
+  @Get('pending-payments')
+  getPendingPayments(@Query('partyId') partyId?: string) {
+    return this.partiesService.getPartyPendingPayments(partyId);
+  }
+
   @Get()
   findAll(@Query('destinationId') destinationId?: string) {
     return this.partiesService.findAll(destinationId);
@@ -23,4 +28,3 @@ export class PartiesController {
     return this.partiesService.findOne(id);
   }
 }
-
