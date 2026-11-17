@@ -4,9 +4,10 @@ import { ImportsPumpsService } from './imports-pumps.service';
 import { ImportsSettlementsService } from './imports-settlements.service';
 import { ImportsController } from './imports.controller';
 import { ImportsExportController } from './imports-export.controller';
+import { ImportsUploadController } from './imports-upload.controller';
 
 @Module({
-  controllers: [ImportsController, ImportsExportController],
+  controllers: [ImportsController, ImportsExportController, ImportsUploadController],
   providers: [ImportsService, ImportsPumpsService, ImportsSettlementsService],
   exports: [ImportsService, ImportsPumpsService, ImportsSettlementsService],
 })
