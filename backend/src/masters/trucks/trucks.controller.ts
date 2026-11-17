@@ -32,12 +32,19 @@ export class TrucksController {
 
   @Post('reconcile/upload')
   @UseInterceptors(FileInterceptor('file'))
-  uploadAndReconcile(@UploadedFile() file: any) {
+  uploadAndReconcile(@UploadedFile() file: any, @Body() body: any) {
     if (!file || !file.buffer) {
       throw new BadRequestException('Please provide an Excel file (.xlsx)');
     }
     const origName = file.originalname || 'Uploaded Workbook';
-    return this.reconService.reconcileExcelBuffer(file.buffer, origName);
+    const mapping = {
+      truckCol: body.truckCol ? parseInt(body.truckCol, 10) : undefined,
+      dateCol: body.dateCol ? parseInt(body.dateCol, 10) : undefined,
+      balesCol: body.balesCol ? parseInt(body.balesCol, 10) : undefined,
+      destCol: body.destCol ? parseInt(body.destCol, 10) : undefined,
+      contactCol: body.contactCol ? parseInt(body.contactCol, 10) : undefined,
+    };
+    return this.reconService.reconcileExcelBuffer(file.buffer, origName, mapping);
   }
 
   @Get()

@@ -1,14 +1,12 @@
 'use client';
 
 import React, { useEffect, useState, useRef } from 'react';
-import { DataTable, Column } from '../../../../components/ui/DataTable';
 import { StatCard } from '../../../../components/ui/StatCard';
-import { Badge } from '../../../../components/ui/Badge';
 import { TruckReconcileTopBar } from './TruckReconcileTopBar';
-import { TruckReconcileFilters } from './TruckReconcileFilters';
+import { TruckReconcileTable } from './TruckReconcileTable';
 import { TruckPartySummaryView } from './TruckPartySummaryView';
+import { ColumnMappingDrawer } from './ColumnMappingDrawer';
 import { apiFetch, getApiBase } from '../../../../lib/api';
-import Link from 'next/link';
 import { Search } from 'lucide-react';
 
 export default function TruckReconcilePage() {
@@ -21,6 +19,12 @@ export default function TruckReconcilePage() {
   const [searchTruck, setSearchTruck] = useState('');
   const [filterSource, setFilterSource] = useState('ALL');
   const [filterStatus, setFilterStatus] = useState('ALL');
+  const [showMappingModal, setShowMappingModal] = useState(false);
+  const [truckCol, setTruckCol] = useState<number>(-1);
+  const [dateCol, setDateCol] = useState<number>(-1);
+  const [balesCol, setBalesCol] = useState<number>(-1);
+  const [destCol, setDestCol] = useState<number>(-1);
+  const [contactCol, setContactCol] = useState<number>(-1);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadSummary = async () => {
@@ -62,6 +66,11 @@ export default function TruckReconcilePage() {
     setUploading(true);
     const formData = new FormData();
     formData.append('file', file);
+    if (truckCol > 0) formData.append('truckCol', String(truckCol));
+    if (dateCol > 0) formData.append('dateCol', String(dateCol));
+    if (balesCol > 0) formData.append('balesCol', String(balesCol));
+    if (destCol > 0) formData.append('destCol', String(destCol));
+    if (contactCol > 0) formData.append('contactCol', String(contactCol));
 
     try {
       const token = typeof window !== 'undefined' ? localStorage.getItem('rs_token') : null;
@@ -89,60 +98,30 @@ export default function TruckReconcilePage() {
     return true;
   });
 
-  const columns: Column<any>[] = [
-    {
-      key: 'truckNo',
-      header: 'Truck No',
-      render: (row) => <span className="font-bold text-slate-900 tracking-wide">{row.truckNo}</span>,
-    },
-    { key: 'source', header: 'Source', render: (row) => row.source },
-    { key: 'destination', header: 'Destination', render: (row) => row.destination || '-' },
-    { key: 'bales', header: 'Bales', render: (row) => row.bales || '-' },
-    { key: 'date', header: 'Date', render: (row) => row.date || '-' },
-    { key: 'mobileNo', header: 'Contact', render: (row) => row.mobileNo || '-' },
-    {
-      key: 'status',
-      header: 'Registry Status',
-      render: (row) =>
-        row.isRegisteredInSystem ? (
-          <Badge variant="success">REGISTERED</Badge>
-        ) : (
-          <Badge variant="danger">MISSING IN DB</Badge>
-        ),
-    },
-    {
-      key: 'action',
-      header: 'Action',
-      render: (row) =>
-        row.systemTruckId ? (
-          <button
-            onClick={() => {
-              setSearchTruck(row.truckNo);
-              loadPartySummary(row.truckNo);
-              setActiveTab('party_summary');
-            }}
-            className="text-xs font-semibold text-blue-600 hover:text-blue-800 hover:underline"
-          >
-            Party Breakdown →
-          </button>
-        ) : (
-          <Link
-            href="/masters/trucks/new"
-            className="text-xs font-semibold text-emerald-600 hover:text-emerald-800 hover:underline"
-          >
-            + Register
-          </Link>
-        ),
-    },
-  ];
-
   return (
     <div className="pb-12">
       <TruckReconcileTopBar
         uploading={uploading}
         fileName={data?.uploadedFileName}
+        showMappingModal={showMappingModal}
+        setShowMappingModal={setShowMappingModal}
         fileInputRef={fileInputRef}
         handleFileUpload={handleFileUpload}
+      />
+
+      <ColumnMappingDrawer
+        isOpen={showMappingModal}
+        onClose={() => setShowMappingModal(false)}
+        truckCol={truckCol}
+        setTruckCol={setTruckCol}
+        dateCol={dateCol}
+        setDateCol={setDateCol}
+        balesCol={balesCol}
+        setBalesCol={setBalesCol}
+        destCol={destCol}
+        setDestCol={setDestCol}
+        contactCol={contactCol}
+        setContactCol={setContactCol}
       />
 
       <div className="p-4 sm:p-6 lg:p-8 space-y-6 w-full">
@@ -195,26 +174,21 @@ export default function TruckReconcilePage() {
         {activeTab === 'party_summary' && <TruckPartySummaryView data={partyData} loading={partyLoading} />}
 
         {activeTab === 'excel' && (
-          <div className="space-y-4">
-            <TruckReconcileFilters
-              filterSource={filterSource}
-              setFilterSource={setFilterSource}
-              filterStatus={filterStatus}
-              setFilterStatus={setFilterStatus}
-              sourcesBreakdown={data?.sourcesBreakdown || []}
-              matchedCount={data?.matchedInSystem || 0}
-              missingCount={data?.missingInSystem || 0}
-              loading={loading}
-              onReload={loadSummary}
-            />
-            <DataTable
-              columns={columns}
-              data={trucksList}
-              searchKey="truckNo"
-              searchPlaceholder="Search truck number, source or destination..."
-              emptyMessage={loading ? 'Reconciling Excel truck entries...' : 'No matching trucks found'}
-            />
-          </div>
+          <TruckReconcileTable
+            data={data}
+            trucksList={trucksList}
+            filterSource={filterSource}
+            setFilterSource={setFilterSource}
+            filterStatus={filterStatus}
+            setFilterStatus={setFilterStatus}
+            loading={loading}
+            onReload={loadSummary}
+            onSelectTruck={(tNo) => {
+              setSearchTruck(tNo);
+              loadPartySummary(tNo);
+              setActiveTab('party_summary');
+            }}
+          />
         )}
       </div>
     </div>

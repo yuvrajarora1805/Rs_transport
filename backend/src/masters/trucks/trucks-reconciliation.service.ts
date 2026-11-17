@@ -3,6 +3,13 @@ import { DbService } from '../../db/db.service';
 import * as ExcelJS from 'exceljs';
 import * as path from 'path';
 import * as fs from 'fs';
+import { ColumnMapping, detectColumnIndices } from './trucks-recon-parser';
+
+export interface SheetPreview {
+  sheetName: string;
+  totalRows: number;
+  headers: { colIndex: number; sampleValues: string[] }[];
+}
 
 export interface TruckReconSummary {
   uploadedFileName?: string;
@@ -13,6 +20,7 @@ export interface TruckReconSummary {
   totalBales: number;
   sourcesBreakdown: { source: string; entries: number; bales: number }[];
   destinationsBreakdown: { destination: string; count: number }[];
+  availableSheets?: SheetPreview[];
   trucks: {
     truckNo: string;
     mobileNo: string;
@@ -33,10 +41,14 @@ export class TrucksReconciliationService {
 
   constructor(private db: DbService) {}
 
-  async reconcileExcelBuffer(buffer: Buffer, fileName: string = 'Uploaded Excel'): Promise<TruckReconSummary> {
+  async reconcileExcelBuffer(
+    buffer: Buffer,
+    fileName: string = 'Uploaded Excel',
+    manualMapping?: ColumnMapping,
+  ): Promise<TruckReconSummary> {
     const wb = new ExcelJS.Workbook();
     await wb.xlsx.load(buffer as any);
-    return this.processWorkbook(wb, fileName);
+    return this.processWorkbook(wb, fileName, manualMapping);
   }
 
   async reconcileDefaultFile(): Promise<TruckReconSummary> {
@@ -61,7 +73,11 @@ export class TrucksReconciliationService {
     return this.processWorkbook(wb, path.basename(filePath));
   }
 
-  private async processWorkbook(wb: ExcelJS.Workbook, fileName: string): Promise<TruckReconSummary> {
+  private async processWorkbook(
+    wb: ExcelJS.Workbook,
+    fileName: string,
+    manualMapping?: ColumnMapping,
+  ): Promise<TruckReconSummary> {
     const systemTrucksRes = await this.db.query(`
       SELECT trk.id, trk.truck_no, trk.owner_name, trk.mobile_no,
              COUNT(DISTINCT d.id) as dispatch_count,
@@ -82,53 +98,38 @@ export class TrucksReconciliationService {
     const sourceStats = new Map<string, { entries: number; bales: number }>();
     const destStats = new Map<string, number>();
     const seenTruckNos = new Set<string>();
+    const sheetPreviews: SheetPreview[] = [];
     let totalBales = 0;
 
     for (const ws of wb.worksheets) {
       const sourceName = ws.name.trim().toUpperCase();
       if (!sourceName || ws.rowCount < 2) continue;
 
-      // Scan rows 1..5 to find header
-      let headerRowIdx = 1;
-      let truckColIdx = -1;
-      let dateColIdx = -1;
-      let balesColIdx = -1;
-      let destColIdx = -1;
-      let contactColIdx = -1;
+      const { truckColIdx, dateColIdx, balesColIdx, destColIdx, contactColIdx, headerRowIdx } =
+        detectColumnIndices(ws, manualMapping);
 
-      for (let scanR = 1; scanR <= Math.min(5, ws.rowCount); scanR++) {
-        const row = ws.getRow(scanR);
-        for (let col = 1; col <= 20; col++) {
-          const val = String(row.getCell(col).value || '').trim().toUpperCase();
-          if ((val.includes('TRUCK') || val.includes('VEHICLE')) && !val.includes('TYPE')) {
-            truckColIdx = col;
-            headerRowIdx = scanR;
+      const colSamples: { colIndex: number; sampleValues: string[] }[] = [];
+      for (let c = 1; c <= Math.min(10, ws.columnCount || 8); c++) {
+        const samples: string[] = [];
+        for (let r = 1; r <= Math.min(5, ws.rowCount); r++) {
+          const v = ws.getRow(r).getCell(c).value;
+          if (v !== null && v !== undefined && v !== '') {
+            samples.push(v instanceof Date ? v.toISOString().split('T')[0] : String(v).trim());
           }
-          if (val === 'DATE' || val.includes('UN. DATE') || val.includes('DISPATCH DATE')) dateColIdx = col;
-          if (val.includes('BALE') || val.includes('WEIGHT') || val.includes('QTY')) balesColIdx = col;
-          if (val.includes('PLACE') || val.includes('DEST') || val.includes('PARTY')) destColIdx = col;
-          if (val.includes('MOBILE') || val.includes('CONTACT') || val.includes('MALIK') || val.includes('OWNER')) contactColIdx = col;
         }
-        if (truckColIdx > 0) break;
+        colSamples.push({ colIndex: c, sampleValues: samples });
       }
 
-      // Fallback defaults if no header text found
-      if (truckColIdx === -1) {
-        truckColIdx = 3;
-        dateColIdx = 2;
-        balesColIdx = 4;
-        contactColIdx = 5;
-        destColIdx = 6;
-        headerRowIdx = 2;
-      }
+      sheetPreviews.push({
+        sheetName: sourceName,
+        totalRows: ws.rowCount,
+        headers: colSamples,
+      });
 
       for (let r = headerRowIdx + 1; r <= ws.rowCount; r++) {
         const row = ws.getRow(r);
-        const truckCellVal = row.getCell(truckColIdx).value;
-        if (!truckCellVal) continue;
-
-        // Skip Date objects or timestamps that landed in truck column
-        if (truckCellVal instanceof Date) continue;
+        const truckCellVal = truckColIdx > 0 ? row.getCell(truckColIdx).value : null;
+        if (!truckCellVal || truckCellVal instanceof Date) continue;
 
         let truckNoRaw = String(truckCellVal).trim();
         if (truckNoRaw.includes('GMT+') || truckNoRaw.includes('Standard Time') || truckNoRaw.includes('T00:00:00')) {
@@ -198,6 +199,7 @@ export class TrucksReconciliationService {
       destinationsBreakdown: Array.from(destStats.entries())
         .map(([destination, count]) => ({ destination, count }))
         .sort((a, b) => b.count - a.count),
+      availableSheets: sheetPreviews,
       trucks: items,
     };
   }
