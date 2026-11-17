@@ -6,7 +6,7 @@ import { DataTable, Column } from '../../../components/ui/DataTable';
 import { Badge } from '../../../components/ui/Badge';
 import { apiFetch, formatDate } from '../../../lib/api';
 import { Truck } from '../../../types';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, FileSpreadsheet } from 'lucide-react';
 import Link from 'next/link';
 
 export default function TrucksPage() {
@@ -91,12 +91,20 @@ export default function TrucksPage() {
         title="Truck Master Directory"
         subtitle="Permanent Vehicle Master, Ownership & Transporter Affiliations"
         actions={
-          <Link
-            href="/masters/trucks/new"
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors shadow-xs"
-          >
-            <PlusCircle size={14} /> Register New Truck
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link
+              href="/masters/trucks/reconcile"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition-colors shadow-xs"
+            >
+              <FileSpreadsheet size={14} className="text-emerald-600" /> Match Excel Data
+            </Link>
+            <Link
+              href="/masters/trucks/new"
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors shadow-xs"
+            >
+              <PlusCircle size={14} /> Register New Truck
+            </Link>
+          </div>
         }
       />
 
@@ -112,4 +120,3 @@ export default function TrucksPage() {
     </div>
   );
 }
-
