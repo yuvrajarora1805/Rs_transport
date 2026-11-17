@@ -64,7 +64,7 @@ export const TruckReconcileFilters: React.FC<Props> = ({
         onClick={onReload}
         className="flex items-center gap-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900"
       >
-        <RefreshCw size={13} className={loading ? 'animate-spin' : ''} /> Reload Default File
+        <RefreshCw size={13} className={loading ? 'animate-spin' : ''} /> Reset View
       </button>
     </div>
   );

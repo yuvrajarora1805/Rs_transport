@@ -82,24 +82,35 @@ export const TruckReconcileTable: React.FC<Props> = ({
 
   return (
     <div className="space-y-4">
-      <TruckReconcileFilters
-        filterSource={filterSource}
-        setFilterSource={setFilterSource}
-        filterStatus={filterStatus}
-        setFilterStatus={setFilterStatus}
-        sourcesBreakdown={data?.sourcesBreakdown || []}
-        matchedCount={data?.matchedInSystem || 0}
-        missingCount={data?.missingInSystem || 0}
-        loading={loading}
-        onReload={onReload}
-      />
-      <DataTable
-        columns={columns}
-        data={trucksList}
-        searchKey="truckNo"
-        searchPlaceholder="Search truck number, source or destination..."
-        emptyMessage={loading ? 'Reconciling Excel truck entries...' : 'No matching trucks found'}
-      />
+      {(!trucksList || trucksList.length === 0) && !loading ? (
+        <div className="bg-white p-12 rounded-xl border border-slate-200 text-center space-y-3">
+          <div className="text-sm font-semibold text-slate-700">No Excel file loaded</div>
+          <p className="text-xs text-slate-500 max-w-md mx-auto">
+            Click <b>&quot;Choose Separate Excel File&quot;</b> or <b>&quot;Upload Excel (.xlsx)&quot;</b> above to select a workbook to analyze.
+          </p>
+        </div>
+      ) : (
+        <>
+          <TruckReconcileFilters
+            filterSource={filterSource}
+            setFilterSource={setFilterSource}
+            filterStatus={filterStatus}
+            setFilterStatus={setFilterStatus}
+            sourcesBreakdown={data?.sourcesBreakdown || []}
+            matchedCount={data?.matchedInSystem || 0}
+            missingCount={data?.missingInSystem || 0}
+            loading={loading}
+            onReload={onReload}
+          />
+          <DataTable
+            columns={columns}
+            data={trucksList}
+            searchKey="truckNo"
+            searchPlaceholder="Search truck number, source or destination..."
+            emptyMessage={loading ? 'Reconciling Excel truck entries...' : 'No matching trucks found'}
+          />
+        </>
+      )}
     </div>
   );
 };

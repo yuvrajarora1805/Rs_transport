@@ -52,25 +52,17 @@ export class TrucksReconciliationService {
   }
 
   async reconcileDefaultFile(): Promise<TruckReconSummary> {
-    const p2 = path.join(process.cwd(), '..', 'TRUCK DETAILS (2).xlsx');
-    const p1 = path.join(process.cwd(), '..', 'TRUCK DETAILS.xlsx');
-    const filePath = fs.existsSync(p2) ? p2 : p1;
-    if (!fs.existsSync(filePath)) {
-      return {
-        uploadedFileName: 'No default workbook found',
-        totalRows: 0,
-        distinctTrucks: 0,
-        matchedInSystem: 0,
-        missingInSystem: 0,
-        totalBales: 0,
-        sourcesBreakdown: [],
-        destinationsBreakdown: [],
-        trucks: [],
-      };
-    }
-    const wb = new ExcelJS.Workbook();
-    await wb.xlsx.readFile(filePath);
-    return this.processWorkbook(wb, path.basename(filePath));
+    return {
+      uploadedFileName: undefined,
+      totalRows: 0,
+      distinctTrucks: 0,
+      matchedInSystem: 0,
+      missingInSystem: 0,
+      totalBales: 0,
+      sourcesBreakdown: [],
+      destinationsBreakdown: [],
+      trucks: [],
+    };
   }
 
   private async processWorkbook(
