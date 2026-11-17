@@ -34,24 +34,30 @@ export class TrucksPartyLookupService {
     let sql = `
       SELECT 
         trk.truck_no, trk.owner_name,
-        COALESCE(p.name, 'Unassigned / Direct Party') as party_name,
-        COALESCE(d.name, '-') as destination_name,
-        t.id as trip_id, t.trip_no, t.unloading_date, t.net_weight, t.rate_per_unit,
-        s.id as settlement_id,
-        COALESCE(s.gross_freight, t.gross_freight) as gross_freight,
-        COALESCE(s.diesel_amount, 0) as diesel_amount,
-        COALESCE(s.advance_amount, 0) as advance_amount,
-        COALESCE(s.commission, 0) as commission,
-        COALESCE(s.net_payable, 0) as net_payable,
-        COALESCE(s.total_paid, 0) as total_paid,
-        COALESCE(s.outstanding, 0) as outstanding,
-        s.status as settlement_status
+        COALESCE(p.name, s.name, 'Unassigned / Direct Party') as party_name,
+        COALESCE(d.name, disp.destination, '-') as destination_name,
+        t.id as trip_id, 
+        COALESCE(t.trip_no, CONCAT('DSP-', disp.sr_no)) as trip_no,
+        COALESCE(t.unloading_date, disp.date) as unloading_date,
+        COALESCE(t.net_weight, disp.bales, 0) as net_weight,
+        COALESCE(t.rate_per_unit, 0) as rate_per_unit,
+        s_settle.id as settlement_id,
+        COALESCE(s_settle.gross_freight, t.gross_freight, 0) as gross_freight,
+        COALESCE(s_settle.diesel_amount, 0) as diesel_amount,
+        COALESCE(s_settle.advance_amount, 0) as advance_amount,
+        COALESCE(s_settle.commission, 0) as commission,
+        COALESCE(s_settle.net_payable, 0) as net_payable,
+        COALESCE(s_settle.total_paid, 0) as total_paid,
+        COALESCE(s_settle.outstanding, 0) as outstanding,
+        s_settle.status as settlement_status
       FROM trucks trk
-      JOIN trips t ON trk.id = t.truck_id
+      LEFT JOIN trips t ON trk.id = t.truck_id
       LEFT JOIN parties p ON t.party_id = p.id
       LEFT JOIN destinations d ON t.destination_id = d.id
-      LEFT JOIN settlements s ON t.id = s.trip_id
-      WHERE 1=1
+      LEFT JOIN settlements s_settle ON t.id = s_settle.trip_id
+      LEFT JOIN dispatches disp ON trk.id = disp.truck_id
+      LEFT JOIN sources s ON disp.source_id = s.id
+      WHERE (t.id IS NOT NULL OR disp.id IS NOT NULL)
     `;
     const params: any[] = [];
     if (truckNo && truckNo.trim()) {
@@ -59,7 +65,7 @@ export class TrucksPartyLookupService {
       sql += ` AND trk.truck_no LIKE ?`;
       params.push(`%${cleanNo}%`);
     }
-    sql += ` ORDER BY trk.truck_no ASC, party_name ASC, t.created_at DESC`;
+    sql += ` ORDER BY trk.truck_no ASC, party_name ASC, unloading_date DESC`;
 
     const res = await this.db.query(sql, params);
     const rows = res.rows as any[];
