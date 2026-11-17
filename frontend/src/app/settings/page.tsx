@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Header } from '../../components/layout/Header';
 import { Database, ShieldCheck, Palette, Building2, Save } from 'lucide-react';
+import { MailSettingsCard } from './MailSettingsCard';
 
 export default function SettingsPage() {
   const [companyName, setCompanyName] = useState('RS Transport Company');
@@ -21,7 +22,7 @@ export default function SettingsPage() {
     <div className="pb-12">
       <Header
         title="System Settings"
-        subtitle="Configure company details, database parameters & UI preferences"
+        subtitle="Configure company details, database parameters, email service & UI preferences"
       />
 
       <div className="p-8 space-y-6 w-full">
@@ -68,6 +69,9 @@ export default function SettingsPage() {
               </div>
             </div>
           </div>
+
+          {/* Email / SMTP Notification Service Card */}
+          <MailSettingsCard />
 
           {/* Database & Engine */}
           <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-xs space-y-4">
@@ -140,4 +144,3 @@ export default function SettingsPage() {
     </div>
   );
 }
-
