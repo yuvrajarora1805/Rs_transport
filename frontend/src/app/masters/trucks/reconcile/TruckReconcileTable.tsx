@@ -9,10 +9,13 @@ import Link from 'next/link';
 interface Props {
   data: any;
   trucksList: any[];
+  partiesList: string[];
   filterSource: string;
   setFilterSource: (val: string) => void;
   filterStatus: string;
   setFilterStatus: (val: string) => void;
+  filterParty: string;
+  setFilterParty: (val: string) => void;
   loading: boolean;
   onReload: () => void;
   onSelectTruck: (truckNo: string) => void;
@@ -21,10 +24,13 @@ interface Props {
 export const TruckReconcileTable: React.FC<Props> = ({
   data,
   trucksList,
+  partiesList,
   filterSource,
   setFilterSource,
   filterStatus,
   setFilterStatus,
+  filterParty,
+  setFilterParty,
   loading,
   onReload,
   onSelectTruck,
@@ -96,7 +102,10 @@ export const TruckReconcileTable: React.FC<Props> = ({
             setFilterSource={setFilterSource}
             filterStatus={filterStatus}
             setFilterStatus={setFilterStatus}
+            filterParty={filterParty}
+            setFilterParty={setFilterParty}
             sourcesBreakdown={data?.sourcesBreakdown || []}
+            partiesList={partiesList}
             matchedCount={data?.matchedInSystem || 0}
             missingCount={data?.missingInSystem || 0}
             loading={loading}

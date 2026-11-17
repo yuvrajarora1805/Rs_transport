@@ -21,6 +21,7 @@ export default function TruckReconcilePage() {
   const [searchTruck, setSearchTruck] = useState('');
   const [filterSource, setFilterSource] = useState('ALL');
   const [filterStatus, setFilterStatus] = useState('ALL');
+  const [filterExcelParty, setFilterExcelParty] = useState('ALL');
   const [showMappingModal, setShowMappingModal] = useState(false);
   const [truckCol, setTruckCol] = useState<number>(-1);
   const [dateCol, setDateCol] = useState<number>(-1);
@@ -28,6 +29,7 @@ export default function TruckReconcilePage() {
   const [destCol, setDestCol] = useState<number>(-1);
   const [contactCol, setContactCol] = useState<number>(-1);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
 
   const loadSummary = async () => {
     setLoading(true);
@@ -107,10 +109,19 @@ export default function TruckReconcilePage() {
     }
   };
 
+  const excelParties: string[] = React.useMemo(() => {
+    const set = new Set<string>();
+    (data?.trucks || []).forEach((t: any) => {
+      if (t.destination && t.destination !== '-') set.add(t.destination.trim());
+    });
+    return Array.from(set).sort();
+  }, [data]);
+
   const trucksList: any[] = (data?.trucks || []).filter((item: any) => {
     if (filterSource !== 'ALL' && item.source !== filterSource) return false;
     if (filterStatus === 'MATCHED' && !item.isRegisteredInSystem) return false;
     if (filterStatus === 'MISSING' && item.isRegisteredInSystem) return false;
+    if (filterExcelParty !== 'ALL' && item.destination?.trim() !== filterExcelParty) return false;
     return true;
   });
 
@@ -204,10 +215,13 @@ export default function TruckReconcilePage() {
           <TruckReconcileTable
             data={data}
             trucksList={trucksList}
+            partiesList={excelParties}
             filterSource={filterSource}
             setFilterSource={setFilterSource}
             filterStatus={filterStatus}
             setFilterStatus={setFilterStatus}
+            filterParty={filterExcelParty}
+            setFilterParty={setFilterExcelParty}
             loading={loading}
             onReload={loadSummary}
             onSelectTruck={(tNo) => {
