@@ -34,12 +34,12 @@ export class TrucksPartyLookupService {
     let sql = `
       SELECT 
         trk.truck_no, trk.owner_name,
-        COALESCE(p.name, s.name, 'Unassigned / Direct Party') as party_name,
-        COALESCE(d.name, disp.destination, '-') as destination_name,
+        COALESCE(p.name, 'Direct / Self') as party_name,
+        COALESCE(d.name, '-') as destination_name,
         t.id as trip_id, 
-        COALESCE(t.trip_no, CONCAT('DSP-', disp.sr_no)) as trip_no,
-        COALESCE(t.unloading_date, disp.date) as unloading_date,
-        COALESCE(t.net_weight, disp.bales, 0) as net_weight,
+        t.trip_no,
+        t.unloading_date,
+        COALESCE(t.net_weight, 0) as net_weight,
         COALESCE(t.rate_per_unit, 0) as rate_per_unit,
         s_settle.id as settlement_id,
         COALESCE(s_settle.gross_freight, t.gross_freight, 0) as gross_freight,
@@ -51,13 +51,11 @@ export class TrucksPartyLookupService {
         COALESCE(s_settle.outstanding, 0) as outstanding,
         s_settle.status as settlement_status
       FROM trucks trk
-      LEFT JOIN trips t ON trk.id = t.truck_id
+      JOIN trips t ON trk.id = t.truck_id
       LEFT JOIN parties p ON t.party_id = p.id
       LEFT JOIN destinations d ON t.destination_id = d.id
       LEFT JOIN settlements s_settle ON t.id = s_settle.trip_id
-      LEFT JOIN dispatches disp ON trk.id = disp.truck_id
-      LEFT JOIN sources s ON disp.source_id = s.id
-      WHERE (t.id IS NOT NULL OR disp.id IS NOT NULL)
+      WHERE 1=1
     `;
     const params: any[] = [];
     if (truckNo && truckNo.trim()) {

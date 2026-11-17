@@ -102,7 +102,7 @@ export const TruckPartySummaryView: React.FC<Props> = ({ data, loading }) => {
             {isExpanded && (
               <div className="divide-y divide-slate-100 bg-slate-50/50">
                 {item.parties.map((p: any, idx: number) => (
-                  <div key={idx} className="p-4 sm:p-5 space-y-3">
+                  <div key={`${item.truckNo}-${p.partyName}-${idx}`} className="p-4 sm:p-5 space-y-3">
                     <div className="flex flex-wrap items-center justify-between gap-2">
                       <div className="flex items-center gap-2">
                         <User size={15} className="text-blue-600" />
@@ -144,8 +144,8 @@ export const TruckPartySummaryView: React.FC<Props> = ({ data, loading }) => {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 text-slate-700">
-                          {p.trips.map((t: any) => (
-                            <tr key={t.trip_id} className="hover:bg-slate-50">
+                          {p.trips.map((t: any, tIdx: number) => (
+                            <tr key={`${t.trip_id || 'trip'}-${tIdx}`} className="hover:bg-slate-50">
                               <td className="py-2 px-3 font-semibold text-blue-600">{t.trip_no}</td>
                               <td className="py-2 px-3">{formatDate(t.unloading_date)}</td>
                               <td className="py-2 px-3">{Number(t.net_weight || 0).toFixed(2)} MT</td>
