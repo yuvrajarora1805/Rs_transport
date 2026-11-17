@@ -4,6 +4,7 @@ import React from 'react';
 import { DataTable, Column } from '../../../../components/ui/DataTable';
 import { Badge } from '../../../../components/ui/Badge';
 import { TruckReconcileFilters } from './TruckReconcileFilters';
+import { TruckReconcileTableSummaryBar } from './TruckReconcileTableSummaryBar';
 import Link from 'next/link';
 
 interface Props {
@@ -111,6 +112,13 @@ export const TruckReconcileTable: React.FC<Props> = ({
             loading={loading}
             onReload={onReload}
           />
+
+          <TruckReconcileTableSummaryBar
+            trucksList={trucksList}
+            filterParty={filterParty}
+            filterSource={filterSource}
+          />
+
           <DataTable
             columns={columns}
             data={trucksList}
