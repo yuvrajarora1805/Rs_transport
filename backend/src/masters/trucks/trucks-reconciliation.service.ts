@@ -26,6 +26,7 @@ export interface TruckReconSummary {
     mobileNo: string;
     source: string;
     destination: string;
+    bales: number;
     date: string;
     isRegisteredInSystem: boolean;
     systemTruckId?: string;
@@ -169,6 +170,7 @@ export class TrucksReconciliationService {
           mobileNo: contactVal,
           source: sourceName,
           destination: destVal || '-',
+          bales,
           date: dateStr,
           isRegisteredInSystem: !!systemMatch,
           systemTruckId: systemMatch?.id,

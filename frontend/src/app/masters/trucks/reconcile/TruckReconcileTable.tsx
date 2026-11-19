@@ -54,6 +54,7 @@ export const TruckReconcileTable: React.FC<Props> = ({
         </div>
       ),
     },
+    { key: 'bales', header: 'Bales / Qty', render: (row) => (row.bales ? Number(row.bales).toFixed(0) : '-') },
     { key: 'date', header: 'Date', render: (row) => row.date || '-' },
     {
       key: 'dbGrossFreight',

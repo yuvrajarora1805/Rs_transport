@@ -30,10 +30,10 @@ export function detectColumnIndices(ws: ExcelJS.Worksheet, manualMapping?: Colum
           truckColIdx = col;
           headerRowIdx = scanR;
         }
-        if (dateColIdx === -1 && (val === 'DATE' || val.includes('UN. DATE'))) dateColIdx = col;
-        if (balesColIdx === -1 && (val.includes('BALE') || val.includes('WEIGHT') || val.includes('QTY'))) balesColIdx = col;
-        if (destColIdx === -1 && (val.includes('PLACE') || val.includes('DEST') || val.includes('PARTY'))) destColIdx = col;
-        if (contactColIdx === -1 && (val.includes('MOBILE') || val.includes('CONTACT') || val.includes('MALIK') || val.includes('OWNER'))) contactColIdx = col;
+        if (dateColIdx === -1 && (val === 'DATE' || val.includes('UN. DATE') || val.includes('P. DATE') || val.includes('UNLOADING'))) dateColIdx = col;
+        if (balesColIdx === -1 && (val.includes('BALE') || val.includes('BALES') || val.includes('WEIGHT') || val.includes('WIEGHT') || val.includes('QTY'))) balesColIdx = col;
+        if (destColIdx === -1 && (val.includes('PLACE') || val.includes('DEST') || val.includes('PARTY') || val.includes('CONSIGNEE'))) destColIdx = col;
+        if (contactColIdx === -1 && (val.includes('MOBILE') || val.includes('CONTACT') || val.includes('MALIK') || val.includes('OWNER') || val.includes('PHONE'))) contactColIdx = col;
       }
       if (truckColIdx > 0) break;
     }
@@ -58,6 +58,23 @@ export function detectColumnIndices(ws: ExcelJS.Worksheet, manualMapping?: Colum
         }
       }
       if (bestCol !== -1) truckColIdx = bestCol;
+    }
+
+    // Secondary scan for Date, Bales/Weight, Party/Dest, and Contact if not yet found
+    for (let c = 1; c <= Math.min(15, ws.columnCount || 10); c++) {
+      if (c === truckColIdx) continue;
+      for (let r = headerRowIdx + 1; r <= Math.min(headerRowIdx + 10, ws.rowCount); r++) {
+        const cell = ws.getRow(r).getCell(c).value;
+        if (dateColIdx === -1 && cell instanceof Date) {
+          dateColIdx = c;
+        }
+        if (contactColIdx === -1 && typeof cell === 'number' && cell > 6000000000 && cell < 9999999999) {
+          contactColIdx = c;
+        }
+        if (balesColIdx === -1 && typeof cell === 'number' && cell > 0 && cell < 500 && c !== contactColIdx) {
+          balesColIdx = c;
+        }
+      }
     }
   }
 
