@@ -5,6 +5,7 @@ import { DataTable, Column } from '../../../../components/ui/DataTable';
 import { Badge } from '../../../../components/ui/Badge';
 import { TruckReconcileFilters } from './TruckReconcileFilters';
 import { TruckReconcileTableSummaryBar } from './TruckReconcileTableSummaryBar';
+import { formatCurrency } from '../../../../lib/api';
 import Link from 'next/link';
 
 interface Props {
@@ -53,8 +54,41 @@ export const TruckReconcileTable: React.FC<Props> = ({
         </div>
       ),
     },
-    { key: 'bales', header: 'Bales', render: (row) => row.bales || '-' },
     { key: 'date', header: 'Date', render: (row) => row.date || '-' },
+    {
+      key: 'dbGrossFreight',
+      header: 'Freight (ERP)',
+      render: (row) => (
+        <span className="font-semibold text-slate-900">
+          {row.isRegisteredInSystem ? formatCurrency(row.dbGrossFreight || 0) : '-'}
+        </span>
+      ),
+    },
+    {
+      key: 'dbPaid',
+      header: 'Paid Amount',
+      render: (row) => (
+        <span className="font-semibold text-emerald-600">
+          {row.isRegisteredInSystem ? formatCurrency(row.dbPaid || 0) : '-'}
+        </span>
+      ),
+    },
+    {
+      key: 'dbOutstanding',
+      header: 'Outstanding Balance',
+      render: (row) =>
+        row.isRegisteredInSystem ? (
+          <span
+            className={`font-bold ${
+              row.dbOutstanding > 0 ? 'text-rose-600' : 'text-slate-600'
+            }`}
+          >
+            {formatCurrency(row.dbOutstanding || 0)}
+          </span>
+        ) : (
+          <span className="text-slate-400">-</span>
+        ),
+    },
     {
       key: 'status',
       header: 'Registry Status',
@@ -125,6 +159,8 @@ export const TruckReconcileTable: React.FC<Props> = ({
             searchKey="truckNo"
             searchPlaceholder="Search truck number, source or destination..."
             emptyMessage={loading ? 'Reconciling Excel truck entries...' : 'No matching trucks found'}
+            disablePagination={true}
+            maxHeight="650px"
           />
         </>
       )}

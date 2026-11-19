@@ -26,12 +26,15 @@ export interface TruckReconSummary {
     mobileNo: string;
     source: string;
     destination: string;
-    bales: number;
     date: string;
     isRegisteredInSystem: boolean;
     systemTruckId?: string;
     totalSystemDispatches: number;
     totalSystemTrips: number;
+    dbGrossFreight: number;
+    dbDiesel: number;
+    dbPaid: number;
+    dbOutstanding: number;
   }[];
 }
 
@@ -73,10 +76,15 @@ export class TrucksReconciliationService {
     const systemTrucksRes = await this.db.query(`
       SELECT trk.id, trk.truck_no, trk.owner_name, trk.mobile_no,
              COUNT(DISTINCT d.id) as dispatch_count,
-             COUNT(DISTINCT t.id) as trip_count
+             COUNT(DISTINCT t.id) as trip_count,
+             COALESCE(SUM(s_settle.gross_freight), SUM(t.gross_freight), 0) as total_gross_freight,
+             COALESCE(SUM(s_settle.diesel_amount), 0) as total_diesel,
+             COALESCE(SUM(s_settle.total_paid), 0) as total_paid,
+             COALESCE(SUM(s_settle.outstanding), 0) as total_outstanding
       FROM trucks trk
       LEFT JOIN dispatches d ON trk.id = d.truck_id
       LEFT JOIN trips t ON trk.id = t.truck_id
+      LEFT JOIN settlements s_settle ON t.id = s_settle.trip_id
       GROUP BY trk.id, trk.truck_no, trk.owner_name, trk.mobile_no
     `);
 
@@ -161,12 +169,15 @@ export class TrucksReconciliationService {
           mobileNo: contactVal,
           source: sourceName,
           destination: destVal || '-',
-          bales,
           date: dateStr,
           isRegisteredInSystem: !!systemMatch,
           systemTruckId: systemMatch?.id,
           totalSystemDispatches: Number(systemMatch?.dispatch_count || 0),
           totalSystemTrips: Number(systemMatch?.trip_count || 0),
+          dbGrossFreight: Number(systemMatch?.total_gross_freight || 0),
+          dbDiesel: Number(systemMatch?.total_diesel || 0),
+          dbPaid: Number(systemMatch?.total_paid || 0),
+          dbOutstanding: Number(systemMatch?.total_outstanding || 0),
         });
       }
     }

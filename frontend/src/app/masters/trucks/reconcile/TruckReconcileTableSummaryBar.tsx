@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Truck, CheckCircle2, AlertTriangle, Layers } from 'lucide-react';
+import { formatCurrency } from '../../../../lib/api';
 
 interface Props {
   trucksList: any[];
@@ -18,7 +19,7 @@ export const TruckReconcileTableSummaryBar: React.FC<Props> = ({
 
   const totalFilteredRows = trucksList.length;
   const uniqueTrucks = new Set(trucksList.map((t) => t.truckNo)).size;
-  const totalBales = trucksList.reduce((acc, t) => acc + (Number(t.bales) || 0), 0);
+  const totalOutstanding = trucksList.reduce((acc, t) => acc + (Number(t.dbOutstanding) || 0), 0);
   const matchedCount = trucksList.filter((t) => t.isRegisteredInSystem).length;
   const missingCount = totalFilteredRows - matchedCount;
 
@@ -49,9 +50,9 @@ export const TruckReconcileTableSummaryBar: React.FC<Props> = ({
           <b>{uniqueTrucks}</b> Trucks
         </span>
 
-        {totalBales > 0 && (
-          <span className="bg-white px-2.5 py-1 rounded-md border border-slate-200 shadow-2xs text-slate-700">
-            <b>{totalBales}</b> Total Bales
+        {totalOutstanding > 0 && (
+          <span className="bg-white px-2.5 py-1 rounded-md border border-rose-200 shadow-2xs text-rose-700 font-bold">
+            Total Outstanding: {formatCurrency(totalOutstanding)}
           </span>
         )}
       </div>

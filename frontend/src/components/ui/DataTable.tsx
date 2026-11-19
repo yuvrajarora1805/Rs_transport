@@ -18,6 +18,8 @@ interface DataTableProps<T> {
   dateKey?: keyof T;
   enableDateFilter?: boolean;
   stickyFirstColumn?: boolean;
+  disablePagination?: boolean;
+  maxHeight?: string;
 }
 
 export function DataTable<T extends Record<string, any>>({
@@ -29,12 +31,14 @@ export function DataTable<T extends Record<string, any>>({
   dateKey,
   enableDateFilter = true,
   stickyFirstColumn = true,
+  disablePagination = false,
+  maxHeight,
 }: DataTableProps<T>) {
   const [search, setSearch] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [page, setPage] = useState(1);
-  const pageSize = 12;
+  const pageSize = disablePagination ? data.length || 1 : 12;
 
   // Auto-detect dateKey if not explicitly provided
   const effectiveDateKey = React.useMemo(() => {
@@ -63,23 +67,12 @@ export function DataTable<T extends Record<string, any>>({
       if (effectiveDateKey && (startDate || endDate)) {
         const rawDate = item[effectiveDateKey] || (item as any)[String(effectiveDateKey).replace(/[A-Z]/g, (l) => `_${l.toLowerCase()}`)];
         if (!rawDate) return false;
-
         const dateObj = new Date(rawDate);
         if (isNaN(dateObj.getTime())) return false;
-
-        const year = dateObj.getFullYear();
-        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-        const day = String(dateObj.getDate()).padStart(2, '0');
-        const itemDateStr = `${year}-${month}-${day}`;
-
-        if (startDate && itemDateStr < startDate) {
-          return false;
-        }
-        if (endDate && itemDateStr > endDate) {
-          return false;
-        }
+        const itemDateStr = dateObj.toISOString().split('T')[0];
+        if (startDate && itemDateStr < startDate) return false;
+        if (endDate && itemDateStr > endDate) return false;
       }
-
       return true;
     });
   }, [data, search, searchKey, startDate, endDate, effectiveDateKey]);
@@ -158,9 +151,14 @@ export function DataTable<T extends Record<string, any>>({
         </div>
       )}
 
-      <div className="overflow-x-auto w-full [scrollbar-width:thin] [scrollbar-color:#cbd5e1_transparent] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar-track]:bg-slate-100/60 [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-slate-400">
+      <div
+        style={maxHeight ? { maxHeight } : undefined}
+        className={`overflow-x-auto w-full [scrollbar-width:thin] [scrollbar-color:#cbd5e1_transparent] [&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar-track]:bg-slate-100/60 [&::-webkit-scrollbar-thumb]:bg-slate-300 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-slate-400 ${
+          maxHeight ? 'overflow-y-auto' : ''
+        }`}
+      >
         <table className="w-full text-left text-sm text-slate-700">
-          <thead className="bg-slate-100/95 text-xs uppercase font-bold text-slate-700 border-b border-slate-200">
+          <thead className="bg-slate-100/95 text-xs uppercase font-bold text-slate-700 border-b border-slate-200 sticky top-0 z-20 shadow-xs">
             <tr>
               {columns.map((col, idx) => {
                 const isSticky = stickyFirstColumn && idx === 0;
@@ -212,7 +210,7 @@ export function DataTable<T extends Record<string, any>>({
         </table>
       </div>
 
-      {totalPages > 1 && (
+      {!disablePagination && totalPages > 1 && (
         <div className="p-4 border-t border-slate-200 flex items-center justify-between text-sm text-slate-600 bg-slate-50/60">
           <span className="font-medium">
             Page {page} of {totalPages} ({filteredData.length} total)
@@ -233,6 +231,13 @@ export function DataTable<T extends Record<string, any>>({
               Next
             </button>
           </div>
+        </div>
+      )}
+      {disablePagination && (
+        <div className="p-3 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500 bg-slate-50/60">
+          <span className="font-medium">
+            Showing all {filteredData.length} records (scrollable)
+          </span>
         </div>
       )}
     </div>
