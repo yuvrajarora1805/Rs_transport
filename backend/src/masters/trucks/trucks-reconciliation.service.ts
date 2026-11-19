@@ -3,7 +3,7 @@ import { DbService } from '../../db/db.service';
 import * as ExcelJS from 'exceljs';
 import * as path from 'path';
 import * as fs from 'fs';
-import { ColumnMapping, detectColumnIndices } from './trucks-recon-parser';
+import { ColumnMapping, detectColumnIndices, extractNum, extractStr } from './trucks-recon-parser';
 
 export interface SheetPreview {
   sheetName: string;
@@ -18,25 +18,14 @@ export interface TruckReconSummary {
   matchedInSystem: number;
   missingInSystem: number;
   totalBales: number;
+  totalExcelWeight: number;
+  totalErpWeight: number;
+  totalErpFreight: number;
+  totalErpOutstanding: number;
   sourcesBreakdown: { source: string; entries: number; bales: number }[];
   destinationsBreakdown: { destination: string; count: number }[];
   availableSheets?: SheetPreview[];
-  trucks: {
-    truckNo: string;
-    mobileNo: string;
-    source: string;
-    destination: string;
-    bales: number;
-    date: string;
-    isRegisteredInSystem: boolean;
-    systemTruckId?: string;
-    totalSystemDispatches: number;
-    totalSystemTrips: number;
-    dbGrossFreight: number;
-    dbDiesel: number;
-    dbPaid: number;
-    dbOutstanding: number;
-  }[];
+  trucks: any[];
 }
 
 @Injectable()
@@ -45,27 +34,31 @@ export class TrucksReconciliationService {
 
   constructor(private db: DbService) {}
 
-  async reconcileExcelBuffer(
-    buffer: Buffer,
-    fileName: string = 'Uploaded Excel',
-    manualMapping?: ColumnMapping,
-  ): Promise<TruckReconSummary> {
+  async reconcileExcelBuffer(buffer: Buffer, fileName = 'Uploaded Excel', manualMapping?: ColumnMapping): Promise<TruckReconSummary> {
     const wb = new ExcelJS.Workbook();
     await wb.xlsx.load(buffer as any);
     return this.processWorkbook(wb, fileName, manualMapping);
   }
 
   async reconcileDefaultFile(): Promise<TruckReconSummary> {
+    const candidates = [
+      path.resolve(process.cwd(), 'RS TRANSPORT COMPANY Plant Pass.xlsx'),
+      path.resolve(process.cwd(), '..', 'RS TRANSPORT COMPANY Plant Pass.xlsx'),
+      '/media/yuvraj/New Volume/xamp/htdocs/Rs_transport/RS TRANSPORT COMPANY Plant Pass.xlsx',
+    ];
+    for (const p of candidates) {
+      if (fs.existsSync(p)) {
+        try {
+          return await this.reconcileExcelBuffer(fs.readFileSync(p), 'RS TRANSPORT COMPANY Plant Pass.xlsx');
+        } catch (err: any) {
+          this.logger.warn(`Could not load default workbook: ${err.message}`);
+        }
+      }
+    }
     return {
-      uploadedFileName: undefined,
-      totalRows: 0,
-      distinctTrucks: 0,
-      matchedInSystem: 0,
-      missingInSystem: 0,
-      totalBales: 0,
-      sourcesBreakdown: [],
-      destinationsBreakdown: [],
-      trucks: [],
+      uploadedFileName: undefined, totalRows: 0, distinctTrucks: 0, matchedInSystem: 0,
+      missingInSystem: 0, totalBales: 0, totalExcelWeight: 0, totalErpWeight: 0,
+      totalErpFreight: 0, totalErpOutstanding: 0, sourcesBreakdown: [], destinationsBreakdown: [], trucks: [],
     };
   }
 
@@ -76,17 +69,31 @@ export class TrucksReconciliationService {
   ): Promise<TruckReconSummary> {
     const systemTrucksRes = await this.db.query(`
       SELECT trk.id, trk.truck_no, trk.owner_name, trk.mobile_no,
-             COUNT(DISTINCT d.id) as dispatch_count,
-             COUNT(DISTINCT t.id) as trip_count,
-             COALESCE(SUM(s_settle.gross_freight), SUM(t.gross_freight), 0) as total_gross_freight,
-             COALESCE(SUM(s_settle.diesel_amount), 0) as total_diesel,
-             COALESCE(SUM(s_settle.total_paid), 0) as total_paid,
-             COALESCE(SUM(s_settle.outstanding), 0) as total_outstanding
+             COALESCE(disp.dispatch_count, 0) as erp_dispatches,
+             COALESCE(disp.total_bales, 0) as erp_bales,
+             COALESCE(trp.trip_count, 0) as erp_trips,
+             COALESCE(trp.total_net_weight, 0) as erp_net_weight,
+             COALESCE(trp.total_gross_freight, 0) as erp_gross_freight,
+             COALESCE(trp.total_diesel, 0) as erp_diesel,
+             COALESCE(trp.total_paid, 0) as erp_paid,
+             COALESCE(trp.total_outstanding, 0) as erp_outstanding
       FROM trucks trk
-      LEFT JOIN dispatches d ON trk.id = d.truck_id
-      LEFT JOIN trips t ON trk.id = t.truck_id
-      LEFT JOIN settlements s_settle ON t.id = s_settle.trip_id
-      GROUP BY trk.id, trk.truck_no, trk.owner_name, trk.mobile_no
+      LEFT JOIN (
+        SELECT truck_id, COUNT(*) as dispatch_count, SUM(bales) as total_bales
+        FROM dispatches GROUP BY truck_id
+      ) disp ON trk.id = disp.truck_id
+      LEFT JOIN (
+        SELECT t.truck_id,
+               COUNT(DISTINCT t.id) as trip_count,
+               SUM(t.net_weight) as total_net_weight,
+               SUM(COALESCE(s.gross_freight, t.gross_freight, 0)) as total_gross_freight,
+               SUM(COALESCE(s.diesel_amount, 0)) as total_diesel,
+               SUM(COALESCE(s.total_paid, 0)) as total_paid,
+               SUM(COALESCE(s.outstanding, 0)) as total_outstanding
+        FROM trips t
+        LEFT JOIN settlements s ON t.id = s.trip_id
+        GROUP BY t.truck_id
+      ) trp ON trk.id = trp.truck_id
     `);
 
     const systemMap = new Map<string, any>();
@@ -101,92 +108,108 @@ export class TrucksReconciliationService {
     const seenTruckNos = new Set<string>();
     const sheetPreviews: SheetPreview[] = [];
     let totalBales = 0;
+    let totalExcelWeight = 0;
 
     for (const ws of wb.worksheets) {
-      const sourceName = ws.name.trim().toUpperCase();
-      if (!sourceName || ws.rowCount < 2) continue;
+      const sheetName = ws.name.trim().toUpperCase();
+      if (!sheetName || ws.rowCount < 2) continue;
 
-      const { truckColIdx, dateColIdx, balesColIdx, destColIdx, contactColIdx, headerRowIdx } =
-        detectColumnIndices(ws, manualMapping);
-
+      const idx = detectColumnIndices(ws, manualMapping);
       const colSamples: { colIndex: number; sampleValues: string[] }[] = [];
       for (let c = 1; c <= Math.min(10, ws.columnCount || 8); c++) {
         const samples: string[] = [];
         for (let r = 1; r <= Math.min(5, ws.rowCount); r++) {
-          const v = ws.getRow(r).getCell(c).value;
-          if (v !== null && v !== undefined && v !== '') {
-            samples.push(v instanceof Date ? v.toISOString().split('T')[0] : String(v).trim());
-          }
+          const v = extractStr(ws.getRow(r).getCell(c).value);
+          if (v) samples.push(v);
         }
         colSamples.push({ colIndex: c, sampleValues: samples });
       }
 
-      sheetPreviews.push({
-        sheetName: sourceName,
-        totalRows: ws.rowCount,
-        headers: colSamples,
-      });
+      sheetPreviews.push({ sheetName, totalRows: ws.rowCount, headers: colSamples });
 
-      for (let r = headerRowIdx + 1; r <= ws.rowCount; r++) {
+      for (let r = idx.headerRowIdx + 1; r <= ws.rowCount; r++) {
         const row = ws.getRow(r);
-        const truckCellVal = truckColIdx > 0 ? row.getCell(truckColIdx).value : null;
-        if (!truckCellVal || truckCellVal instanceof Date) continue;
+        const truckVal = idx.truckColIdx > 0 ? row.getCell(idx.truckColIdx).value : null;
+        if (!truckVal || truckVal instanceof Date) continue;
 
-        let truckNoRaw = String(truckCellVal).trim();
-        if (truckNoRaw.includes('GMT+') || truckNoRaw.includes('Standard Time') || truckNoRaw.includes('T00:00:00')) {
-          continue;
-        }
-
-        const truckNo = truckNoRaw.toUpperCase().replace(/\s+/g, '');
+        const truckRaw = extractStr(truckVal);
+        if (truckRaw.includes('GMT+') || truckRaw.includes('Standard Time')) continue;
+        const truckNo = truckRaw.toUpperCase().replace(/\s+/g, '');
         if (truckNo === 'TOTAL' || truckNo === 'SRNO' || truckNo === 'TRUCKNO' || !/[0-9]/.test(truckNo)) continue;
 
-        const dateVal = dateColIdx > 0 ? row.getCell(dateColIdx).value : null;
-        const balesVal = balesColIdx > 0 ? row.getCell(balesColIdx).value : null;
-        const contactVal = contactColIdx > 0 ? String(row.getCell(contactColIdx).value || '').trim() : '';
-        const destVal = destColIdx > 0 ? String(row.getCell(destColIdx).value || '').trim() : '';
+        const dateStr = idx.dateColIdx > 0 ? extractStr(row.getCell(idx.dateColIdx).value) : '-';
+        const contact = idx.contactColIdx > 0 ? extractStr(row.getCell(idx.contactColIdx).value) : '';
+        const dest = idx.destColIdx > 0 ? extractStr(row.getCell(idx.destColIdx).value) : '';
+        const sourceLoc = idx.sourceColIdx > 0 ? extractStr(row.getCell(idx.sourceColIdx).value) : '';
+        const finalSource = sourceLoc || sheetName;
+        const slipNo = idx.slipColIdx > 0 ? extractStr(row.getCell(idx.slipColIdx).value) : '';
 
-        const bales = typeof balesVal === 'number' ? balesVal : parseFloat(String(balesVal)) || 0;
-        totalBales += bales;
+        const excelWeight = idx.weightColIdx > 0 ? extractNum(row.getCell(idx.weightColIdx).value) : 0;
+        const excelBales = idx.balesColIdx > 0 ? extractNum(row.getCell(idx.balesColIdx).value) : 0;
+        const excelFreight = idx.freightColIdx > 0 ? extractNum(row.getCell(idx.freightColIdx).value) : 0;
+        const excelDiesel = idx.dieselColIdx > 0 ? extractNum(row.getCell(idx.dieselColIdx).value) : 0;
+        const excelPaid = idx.paidColIdx > 0 ? extractNum(row.getCell(idx.paidColIdx).value) : 0;
+        const excelPending = idx.pendingColIdx > 0 ? extractNum(row.getCell(idx.pendingColIdx).value) : 0;
+
+        totalBales += (excelBales || (excelWeight > 0 ? excelWeight : 0));
+        totalExcelWeight += excelWeight;
         seenTruckNos.add(truckNo);
 
-        const currentSource = sourceStats.get(sourceName) || { entries: 0, bales: 0 };
-        currentSource.entries += 1;
-        currentSource.bales += bales;
-        sourceStats.set(sourceName, currentSource);
+        const curSource = sourceStats.get(finalSource) || { entries: 0, bales: 0 };
+        curSource.entries += 1;
+        curSource.bales += excelBales;
+        sourceStats.set(finalSource, curSource);
 
-        const cleanDest = destVal ? destVal.toUpperCase() : 'UNSPECIFIED';
+        const cleanDest = dest ? dest.toUpperCase() : 'UNSPECIFIED';
         destStats.set(cleanDest, (destStats.get(cleanDest) || 0) + 1);
 
-        const systemMatch = systemMap.get(truckNo);
-        let dateStr = '-';
-        if (dateVal instanceof Date) {
-          dateStr = dateVal.toISOString().split('T')[0];
-        } else if (dateVal) {
-          dateStr = String(dateVal).split('T')[0];
-        }
+        const sysMatch = systemMap.get(truckNo);
 
         items.push({
           truckNo,
-          mobileNo: contactVal,
-          source: sourceName,
-          destination: destVal || '-',
-          bales,
+          mobileNo: contact || sysMatch?.mobile_no || '',
+          source: finalSource,
+          destination: dest || sysMatch?.owner_name || '-',
+          slipNo,
           date: dateStr,
-          isRegisteredInSystem: !!systemMatch,
-          systemTruckId: systemMatch?.id,
-          totalSystemDispatches: Number(systemMatch?.dispatch_count || 0),
-          totalSystemTrips: Number(systemMatch?.trip_count || 0),
-          dbGrossFreight: Number(systemMatch?.total_gross_freight || 0),
-          dbDiesel: Number(systemMatch?.total_diesel || 0),
-          dbPaid: Number(systemMatch?.total_paid || 0),
-          dbOutstanding: Number(systemMatch?.total_outstanding || 0),
+          excelWeight,
+          excelBales,
+          excelFreight,
+          excelDiesel,
+          excelPaid,
+          excelPending,
+          isRegisteredInSystem: !!sysMatch,
+          systemTruckId: sysMatch?.id,
+          erpDispatches: Number(sysMatch?.erp_dispatches || 0),
+          erpBales: Number(sysMatch?.erp_bales || 0),
+          erpTrips: Number(sysMatch?.erp_trips || 0),
+          erpNetWeight: Number(sysMatch?.erp_net_weight || 0),
+          erpGrossFreight: Number(sysMatch?.erp_gross_freight || 0),
+          erpDiesel: Number(sysMatch?.erp_diesel || 0),
+          erpPaid: Number(sysMatch?.erp_paid || 0),
+          erpOutstanding: Number(sysMatch?.erp_outstanding || 0),
+          // Backwards-compatible aliases for legacy components
+          bales: excelBales || (excelWeight > 0 ? excelWeight : Number(sysMatch?.erp_bales || 0)),
+          dbGrossFreight: Number(sysMatch?.erp_gross_freight || 0),
+          dbDiesel: Number(sysMatch?.erp_diesel || 0),
+          dbPaid: Number(sysMatch?.erp_paid || 0),
+          dbOutstanding: Number(sysMatch?.erp_outstanding || 0),
         });
       }
     }
 
     let matchedCount = 0;
+    let totalErpWeight = 0;
+    let totalErpFreight = 0;
+    let totalErpOutstanding = 0;
     for (const t of seenTruckNos) {
-      if (systemMap.has(t)) matchedCount++;
+      const match = systemMap.get(t);
+      if (match) {
+        matchedCount++;
+        totalErpWeight += Number(match.erp_net_weight || 0);
+        totalErpFreight += Number(match.erp_gross_freight || 0);
+        totalErpOutstanding += Number(match.erp_outstanding || 0);
+      }
     }
 
     return {
@@ -196,6 +219,10 @@ export class TrucksReconciliationService {
       matchedInSystem: matchedCount,
       missingInSystem: seenTruckNos.size - matchedCount,
       totalBales,
+      totalExcelWeight,
+      totalErpWeight,
+      totalErpFreight,
+      totalErpOutstanding,
       sourcesBreakdown: Array.from(sourceStats.entries()).map(([source, data]) => ({
         source,
         entries: data.entries,

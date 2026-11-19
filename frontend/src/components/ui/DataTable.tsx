@@ -78,7 +78,11 @@ export function DataTable<T extends Record<string, any>>({
   }, [data, search, searchKey, startDate, endDate, effectiveDateKey]);
 
   const totalPages = Math.ceil(filteredData.length / pageSize) || 1;
-  const paginatedData = filteredData.slice((page - 1) * pageSize, page * pageSize);
+  const paginatedData = disablePagination ? filteredData : filteredData.slice((page - 1) * pageSize, page * pageSize);
+
+  React.useEffect(() => {
+    if (page > totalPages) setPage(1);
+  }, [totalPages, page]);
 
   const hasActiveFilters = Boolean(search || startDate || endDate);
 

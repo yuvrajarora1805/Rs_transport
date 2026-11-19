@@ -6,7 +6,7 @@ import { TruckReconcileTopBar } from './TruckReconcileTopBar';
 import { TruckReconcileTable } from './TruckReconcileTable';
 import { TruckPartySummaryView } from './TruckPartySummaryView';
 import { ColumnMappingDrawer } from './ColumnMappingDrawer';
-import { apiFetch, getApiBase } from '../../../../lib/api';
+import { apiFetch, getApiBase, formatCurrency } from '../../../../lib/api';
 import { Search } from 'lucide-react';
 
 export default function TruckReconcilePage() {
@@ -153,10 +153,10 @@ export default function TruckReconcilePage() {
 
       <div className="p-4 sm:p-6 lg:p-8 space-y-6 w-full">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <StatCard title="Excel Rows" value={data?.totalRows || 0} subtitle={`${data?.totalBales || 0} Bales`} color="blue" />
-          <StatCard title="Unique Trucks" value={data?.distinctTrucks || 0} subtitle="Vehicles found" color="purple" />
-          <StatCard title="Matched in ERP" value={data?.matchedInSystem || 0} subtitle="Registered vehicles" color="green" />
-          <StatCard title="Missing in ERP" value={data?.missingInSystem || 0} subtitle="Needs registration" color="red" />
+          <StatCard title="Excel Intake Rows" value={data?.totalRows || 0} subtitle={data?.totalExcelWeight ? `${Number(data.totalExcelWeight).toFixed(1)} Qtl (Excel)` : `${data?.totalBales || 0} Bales`} color="blue" />
+          <StatCard title="Unique Trucks" value={data?.distinctTrucks || 0} subtitle="Vehicles in intake" color="purple" />
+          <StatCard title="Matched in ERP" value={data?.matchedInSystem || 0} subtitle={data?.totalErpWeight ? `${Number(data.totalErpWeight).toFixed(1)} MT ERP Weight` : "Registered vehicles"} color="green" />
+          <StatCard title="ERP Outstanding" value={formatCurrency(data?.totalErpOutstanding || 0)} subtitle={`${data?.missingInSystem || 0} Missing in ERP`} color="red" />
         </div>
 
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-slate-200 pb-3">

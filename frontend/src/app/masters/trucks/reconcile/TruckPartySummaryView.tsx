@@ -84,8 +84,11 @@ export const TruckPartySummaryView: React.FC<Props> = ({
       )}
 
       {!loading && (!data || data.length === 0) && (
-        <div className="bg-white p-8 rounded-xl border border-slate-200 text-center text-xs text-slate-500">
-          No trips or party activity recorded for this selection.
+        <div className="bg-white p-8 rounded-xl border border-slate-200 text-center text-xs text-slate-500 space-y-1.5">
+          <div className="font-semibold text-slate-700">No trips or dispatch activity found in ERP for this selection.</div>
+          <p className="text-slate-400 max-w-md mx-auto">
+            The truck is registered in the fleet master, but no trips or dispatches have been posted in the ERP yet.
+          </p>
         </div>
       )}
 
