@@ -4,6 +4,7 @@ import React from 'react';
 import { Bell, Search, ArrowLeftRight, Menu } from 'lucide-react';
 import { useCompany } from '../../context/CompanyContext';
 import { useMobileNav } from '../../context/MobileNavContext';
+import { SyncStatusBadge } from './SyncStatusBadge';
 
 interface HeaderProps {
   title: string;
@@ -40,6 +41,7 @@ export const Header: React.FC<HeaderProps> = ({ title, subtitle, actions }) => {
 
       <div className="flex items-center gap-2 sm:gap-4">
         {/* Company Switcher Pill */}
+        <SyncStatusBadge />
         <button
           onClick={toggleCompany}
           title={`Click to switch firm (Current: ${activeCompany.name})`}

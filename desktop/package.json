@@ -1,0 +1,45 @@
+{
+  "name": "rs-transport-desktop",
+  "version": "1.0.0",
+  "description": "RS Transport ERP - Dedicated Desktop Application",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win --x64"
+  },
+  "keywords": [
+    "transport",
+    "erp",
+    "desktop",
+    "electron"
+  ],
+  "author": "RS Transport Company",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^33.2.1",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.rstransport.erp",
+    "productName": "RS Transport ERP",
+    "directories": {
+      "output": "dist-electron"
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "RS Transport ERP"
+    }
+  }
+}
