@@ -8,3 +8,4 @@ import { SyncController } from './sync.controller';
   exports: [SyncService],
 })
 export class SyncModule {}
+

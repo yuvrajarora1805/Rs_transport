@@ -97,3 +97,4 @@ export const SyncStatusBadge: React.FC = () => {
     </button>
   );
 };
+

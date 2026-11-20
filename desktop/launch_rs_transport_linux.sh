@@ -57,3 +57,4 @@ fi
 echo "[DONE] RS Transport ERP is running!"
 echo "Keep this terminal open or press Ctrl+C to close the application."
 wait
+

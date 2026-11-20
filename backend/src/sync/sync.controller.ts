@@ -15,3 +15,4 @@ export class SyncController {
     return this.syncService.triggerSync();
   }
 }
+
