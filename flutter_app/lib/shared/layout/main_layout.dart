@@ -45,6 +45,7 @@ class _MainLayoutState extends State<MainLayout> {
     NavigationDestination(icon: Icon(Icons.local_gas_station_outlined), selectedIcon: Icon(Icons.local_gas_station), label: 'Fuel'),
     NavigationDestination(icon: Icon(Icons.receipt_long_outlined), selectedIcon: Icon(Icons.receipt_long), label: 'Settlements'),
     NavigationDestination(icon: Icon(Icons.directions_car_outlined), selectedIcon: Icon(Icons.directions_car), label: 'Trucks'),
+    NavigationDestination(icon: Icon(Icons.table_chart_outlined), selectedIcon: Icon(Icons.table_chart), label: 'Reconcile'),
   ];
 
   @override
@@ -135,3 +136,4 @@ class _MainLayoutState extends State<MainLayout> {
     );
   }
 }
+

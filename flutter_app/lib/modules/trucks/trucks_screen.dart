@@ -108,3 +108,4 @@ class _TrucksScreenState extends State<TrucksScreen> {
     );
   }
 }
+

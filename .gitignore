@@ -23,6 +23,11 @@ yarn-debug.log*
 yarn-error.log*
 *.log
 
+# Flutter
+.dart_tool/
+flutter_app/.dart_tool/
+flutter_app/build/
+
 # OS & Editor
 .DS_Store
 Thumbs.db

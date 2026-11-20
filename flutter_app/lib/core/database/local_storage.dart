@@ -79,3 +79,4 @@ class LocalStorage {
     await _prefs?.remove('offline_sync_queue');
   }
 }
+

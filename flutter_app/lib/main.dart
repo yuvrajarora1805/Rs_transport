@@ -8,6 +8,7 @@ import 'modules/trips/trips_screen.dart';
 import 'modules/fuel/fuel_screen.dart';
 import 'modules/settlements/settlements_screen.dart';
 import 'modules/trucks/trucks_screen.dart';
+import 'modules/reconcile/reconcile_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -52,6 +53,7 @@ class _RootNavigationHostState extends State<RootNavigationHost> {
       const FuelScreen(),
       const SettlementsScreen(),
       const TrucksScreen(),
+      const ReconcileScreen(),
     ];
 
     return MainLayout(
@@ -64,3 +66,4 @@ class _RootNavigationHostState extends State<RootNavigationHost> {
     );
   }
 }
+
