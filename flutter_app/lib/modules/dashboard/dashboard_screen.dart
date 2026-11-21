@@ -25,7 +25,7 @@ class DashboardScreen extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.black, color: AppColors.textMain)),
+            Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.textMain)),
             const SizedBox(height: 4),
             Text(subtitle, style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
           ],

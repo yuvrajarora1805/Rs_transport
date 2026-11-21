@@ -62,7 +62,7 @@ class _MainLayoutState extends State<MainLayout> {
                 color: AppColors.primary,
                 borderRadius: BorderRadius.circular(6),
               ),
-              child: const Text('RS', style: TextStyle(color: Colors.white, fontWeight: FontWeight.black, fontSize: 13)),
+              child: const Text('RS', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13)),
             ),
             const SizedBox(width: 8),
             const Text('RS Transport ERP', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
