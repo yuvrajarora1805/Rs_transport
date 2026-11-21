@@ -140,7 +140,7 @@ class VehicleAssignmentCard extends StatelessWidget {
                       ),
                       const SizedBox(width: 10),
                       IconButton(
-                        icon: const Icon(Icons.delete_outline, color: AppColors.error, size: 20),
+                        icon: const Icon(Icons.delete_outline, color: AppColors.danger, size: 20),
                         onPressed: multiTruckRows.length > 1 ? () => onRemoveMultiRow(i) : null,
                       ),
                     ],
