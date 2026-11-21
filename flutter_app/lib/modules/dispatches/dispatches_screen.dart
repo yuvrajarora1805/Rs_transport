@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/api/api_client.dart';
 import '../../core/database/local_storage.dart';
 import '../../core/theme/app_theme.dart';
+import '../../components/layout/erp_header.dart';
 import 'new_dispatch_form.dart';
 
 class DispatchesScreen extends StatefulWidget {
@@ -59,71 +60,55 @@ class _DispatchesScreenState extends State<DispatchesScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(60),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-          decoration: const BoxDecoration(
-            color: Colors.white,
-            border: Border(bottom: BorderSide(color: AppColors.border)),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Column(
+      children: [
+        ERPHeader(
+          title: _isCreatingNew ? 'Add New Dispatch' : 'Dispatch Orders Fleet',
+          subtitle: _isCreatingNew
+              ? 'Record truck departure, load details & destination slips'
+              : 'Track and manage outbound fleet orders',
+          actions: Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    _isCreatingNew ? 'Add New Dispatch' : 'Dispatch Orders Fleet',
-                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.textMain),
-                  ),
-                  Text(
-                    _isCreatingNew ? 'Record truck departure, load details & destination slips' : 'Track and manage outbound fleet orders',
-                    style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
-                  ),
-                ],
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: _isCreatingNew ? AppColors.primary : AppColors.textMain,
+                  side: BorderSide(color: _isCreatingNew ? AppColors.primary : AppColors.border),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                ),
+                onPressed: () => setState(() => _isCreatingNew = true),
+                icon: const Icon(Icons.add_circle_outline, size: 15),
+                label: const Text('New Dispatch', style: TextStyle(fontSize: 11)),
               ),
-              Row(
-                children: [
-                  OutlinedButton.icon(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: _isCreatingNew ? AppColors.primary : AppColors.textMain,
-                      side: BorderSide(color: _isCreatingNew ? AppColors.primary : AppColors.border),
-                    ),
-                    onPressed: () => setState(() => _isCreatingNew = true),
-                    icon: const Icon(Icons.add_circle_outline, size: 16),
-                    label: const Text('New Dispatch Form'),
-                  ),
-                  const SizedBox(width: 10),
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: !_isCreatingNew ? AppColors.primary : AppColors.background,
-                      foregroundColor: !_isCreatingNew ? Colors.white : AppColors.textMain,
-                      elevation: 0,
-                    ),
-                    onPressed: () {
-                      setState(() => _isCreatingNew = false);
-                      _loadDispatches();
-                    },
-                    icon: const Icon(Icons.list_alt, size: 16),
-                    label: Text('Orders List (${_dispatches.length})'),
-                  ),
-                ],
+              const SizedBox(width: 6),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: !_isCreatingNew ? AppColors.primary : AppColors.background,
+                  foregroundColor: !_isCreatingNew ? Colors.white : AppColors.textMain,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                ),
+                onPressed: () {
+                  setState(() => _isCreatingNew = false);
+                  _loadDispatches();
+                },
+                icon: const Icon(Icons.list_alt, size: 15),
+                label: Text('Orders (${_dispatches.length})', style: const TextStyle(fontSize: 11)),
               ),
             ],
           ),
         ),
-      ),
-      body: _isCreatingNew
-          ? NewDispatchFormView(
-              onSaved: () {
-                setState(() => _isCreatingNew = false);
-                _loadDispatches();
-              },
-            )
-          : _buildListView(),
+        Expanded(
+          child: _isCreatingNew
+              ? NewDispatchFormView(
+                  onSaved: () {
+                    setState(() => _isCreatingNew = false);
+                    _loadDispatches();
+                  },
+                )
+              : _buildListView(),
+        ),
+      ],
     );
   }
 

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/foundation.dart';
 import '../api/api_client.dart';
 import '../database/local_storage.dart';
@@ -5,27 +6,34 @@ import '../database/local_storage.dart';
 class SyncService extends ChangeNotifier {
   static final SyncService _instance = SyncService._internal();
   factory SyncService() => _instance;
-  SyncService._internal();
+  SyncService._internal() {
+    _startHeartbeat();
+  }
 
   bool _isOnline = false;
   bool _isSyncing = false;
   int _pendingCount = 0;
   String? _lastSyncedAt;
+  Timer? _timer;
 
   bool get isOnline => _isOnline;
   bool get isSyncing => _isSyncing;
   int get pendingCount => _pendingCount;
   String? get lastSyncedAt => _lastSyncedAt;
 
+  void _startHeartbeat() {
+    _timer?.cancel();
+    _timer = Timer.periodic(const Duration(seconds: 10), (_) => checkSyncStatus());
+  }
+
   Future<void> checkSyncStatus() async {
     final queue = await LocalStorage().getOfflineQueue();
     _pendingCount = queue.length;
 
     try {
-      final res = await ApiClient().get('/sync/status');
-      if (res.statusCode == 200 && res.data != null) {
+      final res = await ApiClient().get('/masters/trucks');
+      if (res.statusCode == 200) {
         _isOnline = true;
-        _lastSyncedAt = res.data['lastSyncedAt'];
       } else {
         _isOnline = false;
       }
@@ -44,7 +52,6 @@ class SyncService extends ChangeNotifier {
     try {
       final queue = await LocalStorage().getOfflineQueue();
       if (queue.isNotEmpty) {
-        // Push queued local changes to backend
         for (final item in queue) {
           final entity = item['entity'];
           final payload = item['payload'];
@@ -57,7 +64,6 @@ class SyncService extends ChangeNotifier {
         await LocalStorage().clearOfflineQueue();
       }
 
-      // Trigger server-side sync reconciler
       await ApiClient().post('/sync/trigger');
       _lastSyncedAt = DateTime.now().toIso8601String();
       _pendingCount = 0;
@@ -71,5 +77,10 @@ class SyncService extends ChangeNotifier {
       return false;
     }
   }
-}
 
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+}
