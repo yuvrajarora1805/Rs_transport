@@ -75,94 +75,115 @@ class _NewSettlementFormViewState extends State<NewSettlementFormView> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            flex: 2,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isWide = constraints.maxWidth >= 980;
+        final formContent = _buildForm();
+        final sidebarContent = SizedBox(
+          width: isWide ? 340 : double.infinity,
+          child: SettlementSummarySidebar(
+            selectedTrip: _selectedTrip,
+            gross: _gross,
+            diesel: _diesel,
+            advance: _advance,
+            commission: _comm,
+            otherDeductions: _other,
+            netPayable: _netPayable,
+            isSubmitting: _isSubmitting,
+            onSave: _handleSubmit,
+          ),
+        );
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: isWide
+              ? Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(child: formContent),
+                    const SizedBox(width: 20),
+                    sidebarContent,
+                  ],
+                )
+              : Column(
+                  children: [
+                    formContent,
+                    const SizedBox(height: 20),
+                    sidebarContent,
+                  ],
+                ),
+        );
+      },
+    );
+  }
+
+  Widget _buildForm() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        if (_error != null)
+          Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(color: const Color(0xFFFFF1F2), borderRadius: BorderRadius.circular(8)),
+            child: Text(_error!, style: const TextStyle(color: Color(0xFFE11D48), fontSize: 12)),
+          ),
+        Card(
+          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Color(0xFFE2E8F0))),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (_error != null)
-                  Container(
-                    margin: const EdgeInsets.only(bottom: 16),
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(color: const Color(0xFFFFF1F2), borderRadius: BorderRadius.circular(8)),
-                    child: Text(_error!, style: const TextStyle(color: Color(0xFFE11D48), fontSize: 12)),
-                  ),
-                Card(
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Color(0xFFE2E8F0))),
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text('Trip Selection & Deductions', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                        const Divider(height: 20),
-                        DropdownButtonFormField<String>(
-                          value: _selectedTripId,
-                          isExpanded: true,
-                          decoration: const InputDecoration(labelText: 'Select Trip to Settle *'),
-                          items: _trips.map((t) {
-                            final no = t['trip_no'] ?? t['tripNo'] ?? '-';
-                            final truck = t['truck_no'] ?? t['truckNo'] ?? '-';
-                            final gross = t['gross_freight'] ?? t['grossFreight'] ?? 0;
-                            return DropdownMenuItem(value: t['id']?.toString(), child: Text('Trip #$no | Truck: $truck | Gross: ₹$gross'));
-                          }).toList(),
-                          onChanged: (v) {
-                            setState(() {
-                              _selectedTripId = v;
-                              _selectedTrip = _trips.firstWhere((t) => t['id']?.toString() == v);
-                            });
-                          },
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Expanded(child: TextField(controller: _dieselCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Diesel Deductions (₹)'), onChanged: (_) => setState(() {}))),
-                            const SizedBox(width: 16),
-                            Expanded(child: TextField(controller: _advanceCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Cash Advances (₹)'), onChanged: (_) => setState(() {}))),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          children: [
-                            Expanded(child: TextField(controller: _commissionCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Commission (₹)'), onChanged: (_) => setState(() {}))),
-                            const SizedBox(width: 16),
-                            Expanded(child: TextField(controller: _otherCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Other Adjustments (₹)'), onChanged: (_) => setState(() {}))),
-                          ],
-                        ),
-                        const SizedBox(height: 16),
-                        SlipImagePicker(
-                          label: 'Attach Signed Settlement Voucher / Payment Slip',
-                          onImageSelected: (b64) => setState(() => _slipImage = b64),
-                        ),
-                      ],
-                    ),
-                  ),
+                const Text('Trip Selection & Deductions', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                const Divider(height: 20),
+                DropdownButtonFormField<String>(
+                  value: _selectedTripId,
+                  isExpanded: true,
+                  decoration: const InputDecoration(labelText: 'Select Trip to Settle *'),
+                  items: _trips.map((t) {
+                    final no = t['trip_no'] ?? t['tripNo'] ?? '-';
+                    final truck = t['truck_no'] ?? t['truckNo'] ?? '-';
+                    final gross = t['gross_freight'] ?? t['grossFreight'] ?? 0;
+                    return DropdownMenuItem(
+                      value: t['id']?.toString(),
+                      child: Text('Trip #$no | Truck: $truck | Gross: ₹$gross', overflow: TextOverflow.ellipsis),
+                    );
+                  }).toList(),
+                  onChanged: (v) {
+                    setState(() {
+                      _selectedTripId = v;
+                      _selectedTrip = _trips.firstWhere((t) => t['id']?.toString() == v);
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(child: TextField(controller: _dieselCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Diesel Deductions (₹)'), onChanged: (_) => setState(() {}))),
+                    const SizedBox(width: 16),
+                    Expanded(child: TextField(controller: _advanceCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Cash Advances (₹)'), onChanged: (_) => setState(() {}))),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(child: TextField(controller: _commissionCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Commission (₹)'), onChanged: (_) => setState(() {}))),
+                    const SizedBox(width: 16),
+                    Expanded(child: TextField(controller: _otherCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Other Adjustments (₹)'), onChanged: (_) => setState(() {}))),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                SlipImagePicker(
+                  label: 'Attach Signed Settlement Voucher / Payment Slip',
+                  onImageSelected: (b64) => setState(() => _slipImage = b64),
                 ),
               ],
             ),
           ),
-          const SizedBox(width: 20),
-          Expanded(
-            child: SettlementSummarySidebar(
-              selectedTrip: _selectedTrip,
-              gross: _gross,
-              diesel: _diesel,
-              advance: _advance,
-              commission: _comm,
-              otherDeductions: _other,
-              netPayable: _netPayable,
-              isSubmitting: _isSubmitting,
-              onSave: _handleSubmit,
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
