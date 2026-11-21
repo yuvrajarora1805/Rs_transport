@@ -7,6 +7,9 @@ import 'modules/dispatches/dispatches_screen.dart';
 import 'modules/trips/trips_screen.dart';
 import 'modules/fuel/fuel_screen.dart';
 import 'modules/settlements/settlements_screen.dart';
+import 'modules/payments/payments_screen.dart';
+import 'modules/outstanding/outstanding_screen.dart';
+import 'modules/reports/reports_screen.dart';
 import 'modules/trucks/trucks_screen.dart';
 import 'modules/reconcile/reconcile_screen.dart';
 
@@ -47,13 +50,16 @@ class _RootNavigationHostState extends State<RootNavigationHost> {
   @override
   Widget build(BuildContext context) {
     final screens = [
-      DashboardScreen(onNavigate: _onNavigate),
-      const DispatchesScreen(),
-      const TripsScreen(),
-      const FuelScreen(),
-      const SettlementsScreen(),
-      const TrucksScreen(),
-      const ReconcileScreen(),
+      DashboardScreen(onNavigate: _onNavigate), // 0: Operations
+      const DispatchesScreen(),                 // 1: Dispatches
+      const TripsScreen(),                      // 2: Trips & Freight
+      const FuelScreen(),                       // 3: Fuel & Diesel
+      const SettlementsScreen(),                // 4: Settlements
+      const PaymentsScreen(),                   // 5: Payments
+      const OutstandingScreen(),                // 6: Outstanding
+      const ReportsScreen(),                    // 7: Reports
+      const TrucksScreen(),                     // 8: Truck Master
+      const ReconcileScreen(),                  // 9: Reconcile Plant Pass
     ];
 
     return MainLayout(
@@ -66,4 +72,3 @@ class _RootNavigationHostState extends State<RootNavigationHost> {
     );
   }
 }
-

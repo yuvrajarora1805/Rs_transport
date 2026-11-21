@@ -48,6 +48,60 @@ class LocalStorage {
     }
   }
 
+  // --- TRIPS CACHE ---
+  Future<void> saveTrips(List<Map<String, dynamic>> trips) async {
+    await init();
+    await _prefs?.setString('cached_trips', jsonEncode(trips));
+  }
+
+  Future<List<Map<String, dynamic>>> getTrips() async {
+    await init();
+    final data = _prefs?.getString('cached_trips');
+    if (data == null) return [];
+    try {
+      final List decoded = jsonDecode(data);
+      return decoded.map((e) => Map<String, dynamic>.from(e)).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  // --- FUEL CACHE ---
+  Future<void> saveFuel(List<Map<String, dynamic>> fuel) async {
+    await init();
+    await _prefs?.setString('cached_fuel', jsonEncode(fuel));
+  }
+
+  Future<List<Map<String, dynamic>>> getFuel() async {
+    await init();
+    final data = _prefs?.getString('cached_fuel');
+    if (data == null) return [];
+    try {
+      final List decoded = jsonDecode(data);
+      return decoded.map((e) => Map<String, dynamic>.from(e)).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  // --- SETTLEMENTS CACHE ---
+  Future<void> saveSettlements(List<Map<String, dynamic>> settlements) async {
+    await init();
+    await _prefs?.setString('cached_settlements', jsonEncode(settlements));
+  }
+
+  Future<List<Map<String, dynamic>>> getSettlements() async {
+    await init();
+    final data = _prefs?.getString('cached_settlements');
+    if (data == null) return [];
+    try {
+      final List decoded = jsonDecode(data);
+      return decoded.map((e) => Map<String, dynamic>.from(e)).toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
   // --- OFFLINE OUTBOX QUEUE ---
   Future<void> queueOfflineAction(String entity, String action, Map<String, dynamic> payload) async {
     await init();
@@ -79,4 +133,3 @@ class LocalStorage {
     await _prefs?.remove('offline_sync_queue');
   }
 }
-

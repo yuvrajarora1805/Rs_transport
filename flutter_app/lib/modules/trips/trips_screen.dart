@@ -1,8 +1,10 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../core/api/api_client.dart';
+import '../../core/database/local_storage.dart';
 import '../../core/theme/app_theme.dart';
-import '../../shared/components/slip_image_picker.dart';
+import '../../components/layout/erp_header.dart';
+import 'new_trip_form.dart';
 
 class TripsScreen extends StatefulWidget {
   const TripsScreen({super.key});
@@ -12,8 +14,10 @@ class TripsScreen extends StatefulWidget {
 }
 
 class _TripsScreenState extends State<TripsScreen> {
+  bool _isCreatingNew = true;
   List<Map<String, dynamic>> _trips = [];
   bool _loading = true;
+  String _search = '';
 
   @override
   void initState() {
@@ -26,108 +30,28 @@ class _TripsScreenState extends State<TripsScreen> {
     try {
       final res = await ApiClient().get('/trips');
       if (res.statusCode == 200 && res.data is List) {
-        _trips = List<Map<String, dynamic>>.from(res.data);
+        final list = List<Map<String, dynamic>>.from(res.data);
+        _trips = list;
+        await LocalStorage().saveTrips(list);
+      } else {
+        _trips = await LocalStorage().getTrips();
       }
-    } catch (_) {}
-    if (mounted) setState(() => _loading = false);
-  }
-
-  void _showNewTripDialog() {
-    final truckCtrl = TextEditingController();
-    final partyCtrl = TextEditingController();
-    final transCtrl = TextEditingController();
-    final netWtCtrl = TextEditingController();
-    final rateCtrl = TextEditingController();
-    String? slipImage;
-
-    showDialog(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (context, setDlgState) {
-          final net = double.tryParse(netWtCtrl.text) ?? 0;
-          final rate = double.tryParse(rateCtrl.text) ?? 0;
-          final freight = net * rate;
-
-          return AlertDialog(
-            title: const Text('Record Factory Unloading Trip', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            content: SizedBox(
-              width: 480,
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(controller: truckCtrl, decoration: const InputDecoration(labelText: 'Truck No (e.g. PB05AB4063)')),
-                    const SizedBox(height: 10),
-                    TextField(controller: partyCtrl, decoration: const InputDecoration(labelText: 'Party / Consignee')),
-                    const SizedBox(height: 10),
-                    TextField(controller: transCtrl, decoration: const InputDecoration(labelText: 'Unloaded on Transporter')),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(child: TextField(controller: netWtCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Net Weight (MT)'), onChanged: (_) => setDlgState(() {}))),
-                        const SizedBox(width: 10),
-                        Expanded(child: TextField(controller: rateCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Rate per MT (₹)'), onChanged: (_) => setDlgState(() {}))),
-                      ],
-                    ),
-                    const SizedBox(height: 10),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(10), border: Border.all(color: AppColors.border)),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('Gross Freight:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                          Text('₹${freight.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 15)),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    SlipImagePicker(
-                      label: 'Attach Dharamkanta Unloading Slip',
-                      onImageSelected: (b64) => slipImage = b64,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-              ElevatedButton(
-                onPressed: () async {
-                  if (truckCtrl.text.isEmpty) return;
-                  final payload = {
-                    'truckNo': truckCtrl.text.trim().toUpperCase(),
-                    'partyName': partyCtrl.text.trim(),
-                    'transporterName': transCtrl.text.trim(),
-                    'netWeight': net,
-                    'ratePerUnit': rate,
-                    'grossFreight': freight,
-                    'unloadingDate': DateTime.now().toIso8601String().split('T')[0],
-                    'slipImage': slipImage,
-                  };
-                  try {
-                    await ApiClient().post('/trips', data: payload);
-                  } catch (_) {}
-                  if (mounted) Navigator.pop(ctx);
-                  _loadTrips();
-                },
-                child: const Text('Save Trip'),
-              ),
-            ],
-          );
-        },
-      ),
-    );
+    } catch (_) {
+      _trips = await LocalStorage().getTrips();
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
   }
 
   void _viewSlip(String? slipImg) {
-    if (slipImg == null) return;
+    if (slipImg == null || slipImg.isEmpty) return;
     final b64 = slipImg.contains(',') ? slipImg.split(',')[1] : slipImg;
     showDialog(
       context: context,
       builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(16),
           child: Image.memory(base64Decode(b64), fit: BoxFit.contain),
         ),
       ),
@@ -136,68 +60,115 @@ class _TripsScreenState extends State<TripsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: const [
-                    Text('Weighbridge & Delivery Trips', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-                    Text('Track unloading weight, rate per MT, and gross freight', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
-                  ],
+    return Column(
+      children: [
+        ERPHeader(
+          title: _isCreatingNew ? 'Record New Trip' : 'Weighbridge & Freight Trips',
+          subtitle: _isCreatingNew ? 'Enter weighbridge unloading weight, rate and freight details' : 'List of all verified delivery slips and freight calculations',
+          actions: Row(
+            children: [
+              OutlinedButton.icon(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: _isCreatingNew ? AppColors.primary : AppColors.textMain,
+                  side: BorderSide(color: _isCreatingNew ? AppColors.primary : AppColors.border),
                 ),
-                ElevatedButton.icon(
-                  onPressed: _showNewTripDialog,
-                  icon: const Icon(Icons.add, size: 16),
-                  label: const Text('New Trip'),
+                onPressed: () => setState(() => _isCreatingNew = true),
+                icon: const Icon(Icons.add_circle_outline, size: 16),
+                label: const Text('New Trip Form'),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: !_isCreatingNew ? AppColors.primary : AppColors.background,
+                  foregroundColor: !_isCreatingNew ? Colors.white : AppColors.textMain,
+                  elevation: 0,
                 ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: _loading
-                  ? const Center(child: CircularProgressIndicator())
-                  : _trips.isEmpty
-                      ? const Center(child: Text('No trips loaded.', style: TextStyle(color: AppColors.textMuted)))
-                      : ListView.separated(
-                          itemCount: _trips.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 8),
-                          itemBuilder: (ctx, i) {
-                            final t = _trips[i];
-                            final netWt = double.tryParse((t['net_weight'] ?? 0).toString()) ?? 0;
-                            final freight = double.tryParse((t['gross_freight'] ?? 0).toString()) ?? 0;
-                            final hasSlip = t['slip_image'] != null && t['slip_image'] != '';
-
-                            return Card(
-                              child: ListTile(
-                                leading: const CircleAvatar(backgroundColor: AppColors.background, child: Icon(Icons.route, color: AppColors.primary, size: 20)),
-                                title: Text(t['trip_no'] ?? 'TRIP #${t['id']}', style: const TextStyle(fontWeight: FontWeight.bold)),
-                                subtitle: Text('Weight: ${netWt.toStringAsFixed(2)} MT • Unload: ${t['unloading_date'] ?? '-'}', style: const TextStyle(fontSize: 12)),
-                                trailing: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    if (hasSlip)
-                                      IconButton(
-                                        icon: const Icon(Icons.image_outlined, color: AppColors.primary, size: 20),
-                                        onPressed: () => _viewSlip(t['slip_image']),
-                                        tooltip: 'View Weighbridge Slip',
-                                      ),
-                                    Text('₹${freight.toStringAsFixed(2)}', style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.textMain, fontSize: 13)),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-            ),
-          ],
+                onPressed: () {
+                  setState(() => _isCreatingNew = false);
+                  _loadTrips();
+                },
+                icon: const Icon(Icons.list_alt, size: 16),
+                label: Text('Trips List (${_trips.length})'),
+              ),
+            ],
+          ),
         ),
+        Expanded(
+          child: _isCreatingNew
+              ? NewTripFormView(
+                  onSaved: () {
+                    setState(() => _isCreatingNew = false);
+                    _loadTrips();
+                  },
+                )
+              : _buildListView(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildListView() {
+    final filtered = _trips.where((t) {
+      final q = _search.toLowerCase();
+      final truck = (t['truck_no'] ?? t['truckNo'] ?? '').toString().toLowerCase();
+      final party = (t['party_name'] ?? t['partyName'] ?? '').toString().toLowerCase();
+      final num = (t['trip_no'] ?? t['tripNo'] ?? '').toString().toLowerCase();
+      return truck.contains(q) || party.contains(q) || num.contains(q);
+    }).toList();
+
+    return Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(
+        children: [
+          TextField(
+            decoration: const InputDecoration(
+              prefixIcon: Icon(Icons.search, size: 20),
+              hintText: 'Search trips by truck number, party, or trip number...',
+            ),
+            onChanged: (v) => setState(() => _search = v),
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: _loading
+                ? const Center(child: CircularProgressIndicator())
+                : filtered.isEmpty
+                    ? const Center(child: Text('No trips recorded yet.', style: TextStyle(color: AppColors.textMuted)))
+                    : ListView.separated(
+                        itemCount: filtered.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 8),
+                        itemBuilder: (ctx, i) {
+                          final item = filtered[i];
+                          final hasSlip = item['slip_image'] != null && item['slip_image'] != '';
+                          final grossFreight = item['gross_freight'] ?? item['grossFreight'] ?? 0;
+                          return Card(
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: AppColors.border)),
+                            child: ListTile(
+                              leading: const CircleAvatar(backgroundColor: Color(0xFF10B981), child: Icon(Icons.navigation, color: Colors.white, size: 18)),
+                              title: Text(item['truck_no'] ?? item['truckNo'] ?? 'UNKNOWN TRUCK', style: const TextStyle(fontWeight: FontWeight.bold)),
+                              subtitle: Text('Party: ${item['party_name'] ?? item['partyName'] ?? '-'} • Net: ${item['net_weight'] ?? item['netWeight'] ?? 0} MT • Rate: ₹${item['rate_per_unit'] ?? item['ratePerUnit'] ?? 0}'),
+                              trailing: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  if (hasSlip)
+                                    IconButton(
+                                      icon: const Icon(Icons.image_outlined, color: AppColors.primary, size: 20),
+                                      onPressed: () => _viewSlip(item['slip_image']),
+                                      tooltip: 'View Weighbridge Slip',
+                                    ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    decoration: BoxDecoration(color: const Color(0xFFEFF6FF), borderRadius: BorderRadius.circular(8)),
+                                    child: Text('₹$grossFreight', style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold, fontSize: 13)),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+          ),
+        ],
       ),
     );
   }
