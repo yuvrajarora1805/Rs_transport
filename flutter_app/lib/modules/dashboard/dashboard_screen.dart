@@ -118,10 +118,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           childAspectRatio: 1.6,
           physics: const NeverScrollableScrollPhysics(),
           children: [
-            _card('Registered Trucks', '${_kpis['totalRegisteredTrucks'] ?? 2166}', Icons.directions_car, AppColors.primary),
-            _card('Total Dispatches', '${_kpis['totalDispatches'] ?? 1404}', Icons.send, const Color(0xFF64748B)),
-            _card('Total Trips', '${_kpis['totalTrips'] ?? 695}', Icons.navigation, Colors.purple),
-            _card('Pending Settlements', '${_kpis['pendingSettlements'] ?? 4}', Icons.warning_amber, Colors.amber),
+            _card('Registered Trucks', '${_kpis['totalRegisteredTrucks'] ?? 0}', Icons.directions_car, AppColors.primary),
+            _card('Total Dispatches', '${_kpis['totalDispatches'] ?? 0}', Icons.send, const Color(0xFF64748B)),
+            _card('Total Trips', '${_kpis['totalTrips'] ?? 0}', Icons.navigation, Colors.purple),
+            _card('Pending Settlements', '${_kpis['pendingSettlements'] ?? 0}', Icons.warning_amber, Colors.amber),
           ],
         );
       },
@@ -140,10 +140,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
           childAspectRatio: 1.6,
           physics: const NeverScrollableScrollPhysics(),
           children: [
-            _card('Total Gross Freight', '₹${_kpis['totalGrossFreight'] ?? '1.24 Cr'}', Icons.monetization_on, AppColors.primary, sub: 'Billable freight generated'),
-            _card('Diesel Deductions', '₹${_kpis['totalDieselAmount'] ?? '42.10 L'}', Icons.local_gas_station, Colors.amber, sub: 'Fuel provided from pumps'),
-            _card('Payments Disbursed', '₹${_kpis['totalPaymentsMade'] ?? '71.50 L'}', Icons.check_circle, Colors.green, sub: 'Freight paid out to trucks'),
-            _card('Net Outstanding', '₹${_kpis['totalOutstanding'] ?? '10.68 L'}', Icons.account_balance_wallet, Colors.red, sub: 'Payables pending balance'),
+            _card('Total Gross Freight', '₹${_kpis['totalGrossFreight'] ?? 0}', Icons.monetization_on, AppColors.primary, sub: 'Billable freight generated'),
+            _card('Diesel Deductions', '₹${_kpis['totalDieselAmount'] ?? 0}', Icons.local_gas_station, Colors.amber, sub: 'Fuel provided from pumps'),
+            _card('Payments Disbursed', '₹${_kpis['totalPaymentsMade'] ?? 0}', Icons.check_circle, Colors.green, sub: 'Freight paid out to trucks'),
+            _card('Net Outstanding', '₹${_kpis['totalOutstanding'] ?? 0}', Icons.account_balance_wallet, Colors.red, sub: 'Payables pending balance'),
           ],
         );
       },
