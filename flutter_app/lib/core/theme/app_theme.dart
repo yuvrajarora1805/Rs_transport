@@ -11,6 +11,7 @@ class AppColors {
   static const Color success = Color(0xFF10B981); // Emerald
   static const Color warning = Color(0xFFF59E0B); // Amber
   static const Color danger = Color(0xFFEF4444); // Rose
+  static const Color error = Color(0xFFEF4444);
 }
 
 class AppTheme {

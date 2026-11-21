@@ -154,3 +154,4 @@ class _SlipImagePickerState extends State<SlipImagePicker> {
     );
   }
 }
+
