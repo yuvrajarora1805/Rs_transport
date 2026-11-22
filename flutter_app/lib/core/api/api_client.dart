@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:dio/dio.dart';
 
 class ApiClient {
@@ -5,7 +6,7 @@ class ApiClient {
   factory ApiClient() => _instance;
 
   late final Dio dio;
-  String _baseUrl = 'http://127.0.0.1:4000';
+  String _baseUrl = Platform.isAndroid ? 'http://10.0.2.2:4000' : 'http://127.0.0.1:4000';
 
   ApiClient._internal() {
     dio = Dio(

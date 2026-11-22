@@ -22,6 +22,8 @@ class ERPHeader extends StatelessWidget {
     final isRanbir = CompanyState().isRanbir;
     final sync = SyncService();
 
+    final isDesktop = MediaQuery.of(context).size.width >= 900;
+
     return Container(
       height: 70,
       padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -31,7 +33,13 @@ class ERPHeader extends StatelessWidget {
       ),
       child: Row(
         children: [
-          if (onMenuPressed != null) ...[
+          if (!isDesktop) ...[
+            IconButton(
+              icon: const Icon(Icons.menu, size: 20, color: Color(0xFF334155)),
+              onPressed: () => Scaffold.of(context).openDrawer(),
+            ),
+            const SizedBox(width: 4),
+          ] else if (onMenuPressed != null) ...[
             IconButton(
               icon: const Icon(Icons.menu, size: 20, color: Color(0xFF334155)),
               onPressed: onMenuPressed,
