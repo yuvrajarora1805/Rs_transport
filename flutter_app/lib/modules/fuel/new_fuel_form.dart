@@ -1,11 +1,19 @@
 import 'package:flutter/material.dart';
 import '../../core/api/api_client.dart';
+import '../../core/theme/app_theme.dart';
 import '../../shared/components/slip_image_picker.dart';
+import '../../shared/components/searchable_dropdown.dart';
 import 'fuel_impact_sidebar.dart';
 
 class NewFuelFormView extends StatefulWidget {
+  final Map<String, dynamic>? initialParams;
   final VoidCallback onSaved;
-  const NewFuelFormView({super.key, required this.onSaved});
+
+  const NewFuelFormView({
+    super.key,
+    this.initialParams,
+    required this.onSaved,
+  });
 
   @override
   State<NewFuelFormView> createState() => _NewFuelFormViewState();
@@ -23,6 +31,7 @@ class _NewFuelFormViewState extends State<NewFuelFormView> {
 
   String? _selectedTruckId;
   String? _selectedPumpId;
+  String? _linkedTripId;
   String? _slipImage;
   bool _isSubmitting = false;
   String? _error;
@@ -30,7 +39,16 @@ class _NewFuelFormViewState extends State<NewFuelFormView> {
   @override
   void initState() {
     super.initState();
+    _applyParams();
     _loadMasters();
+  }
+
+  void _applyParams() {
+    if (widget.initialParams != null) {
+      final p = widget.initialParams!;
+      if (p['tripId'] != null) _linkedTripId = p['tripId'].toString();
+      if (p['truckId'] != null) _selectedTruckId = p['truckId'].toString();
+    }
   }
 
   Future<void> _loadMasters() async {
@@ -42,14 +60,16 @@ class _NewFuelFormViewState extends State<NewFuelFormView> {
           if (resT.data is List) _trucks = List<Map<String, dynamic>>.from(resT.data);
           if (resP.data is List) {
             _pumps = List<Map<String, dynamic>>.from(resP.data);
-            if (_pumps.isNotEmpty) _selectedPumpId = _pumps[0]['id']?.toString();
+            if (_pumps.isNotEmpty && _selectedPumpId == null) {
+              _selectedPumpId = _pumps[0]['id']?.toString();
+            }
           }
         });
       }
     } catch (_) {}
   }
 
-  void _recalcAmount() {
+  void _calculateTotal() {
     final l = double.tryParse(_litersCtrl.text) ?? 0.0;
     final r = double.tryParse(_rateCtrl.text) ?? 0.0;
     if (l > 0 && r > 0) {
@@ -60,7 +80,7 @@ class _NewFuelFormViewState extends State<NewFuelFormView> {
 
   Future<void> _handleSubmit() async {
     if (_selectedTruckId == null || _selectedPumpId == null || _amountCtrl.text.isEmpty) {
-      setState(() => _error = 'Please select Truck, Pump and enter Amount');
+      setState(() => _error = 'Please select Truck, Pump and enter Net Fuel Amount');
       return;
     }
     setState(() { _isSubmitting = true; _error = null; });
@@ -69,15 +89,16 @@ class _NewFuelFormViewState extends State<NewFuelFormView> {
         'date': _dateCtrl.text,
         'truckId': _selectedTruckId,
         'pumpId': _selectedPumpId,
-        'slipNo': _slipNoCtrl.text,
-        'liters': double.tryParse(_litersCtrl.text) ?? 0,
-        'rate': double.tryParse(_rateCtrl.text) ?? 0,
-        'amount': double.tryParse(_amountCtrl.text) ?? 0,
+        'tripId': _linkedTripId,
+        'litres': double.tryParse(_litersCtrl.text),
+        'rate': double.tryParse(_rateCtrl.text),
+        'amount': double.parse(_amountCtrl.text),
+        'slip_no': _slipNoCtrl.text,
         'slip_image': _slipImage,
       });
       widget.onSaved();
     } catch (e) {
-      setState(() => _error = 'Failed to save fuel slip: $e');
+      setState(() => _error = 'Failed to issue fuel memo: $e');
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
@@ -85,8 +106,15 @@ class _NewFuelFormViewState extends State<NewFuelFormView> {
 
   @override
   Widget build(BuildContext context) {
-    final selectedPump = _pumps.cast<Map<String, dynamic>?>().firstWhere((p) => p?['id']?.toString() == _selectedPumpId, orElse: () => null);
-    final selectedTruck = _trucks.cast<Map<String, dynamic>?>().firstWhere((t) => t?['id']?.toString() == _selectedTruckId, orElse: () => null);
+    final amt = double.tryParse(_amountCtrl.text) ?? 0.0;
+    final selectedPump = _pumps.firstWhere(
+      (p) => p['id']?.toString() == _selectedPumpId,
+      orElse: () => {'name': 'Selected Pump', 'current_balance': 0},
+    );
+    final selectedTruck = _trucks.firstWhere(
+      (t) => t['id']?.toString() == _selectedTruckId,
+      orElse: () => {'truck_no': '-'},
+    );
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -94,10 +122,28 @@ class _NewFuelFormViewState extends State<NewFuelFormView> {
         final formContent = _buildForm();
         final sidebarContent = SizedBox(
           width: isWide ? 340 : double.infinity,
-          child: FuelImpactSidebar(
-            selectedPump: selectedPump,
-            selectedTruck: selectedTruck,
-            amount: double.tryParse(_amountCtrl.text) ?? 0.0,
+          child: Column(
+            children: [
+              FuelImpactSidebar(
+                selectedPump: selectedPump,
+                selectedTruck: selectedTruck,
+                amount: amt,
+              ),
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primary,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(48),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+                onPressed: _isSubmitting ? null : _handleSubmit,
+                icon: _isSubmitting
+                    ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                    : const Icon(Icons.send, size: 16),
+                label: Text(_isSubmitting ? 'Saving Slip...' : 'Record Diesel Slip', style: const TextStyle(fontWeight: FontWeight.bold)),
+              ),
+            ],
           ),
         );
 
@@ -143,68 +189,77 @@ class _NewFuelFormViewState extends State<NewFuelFormView> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Diesel Dispense Information', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                const Text('Fuel Memo & Slip Details', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                 const Divider(height: 20),
                 Row(
                   children: [
-                    Expanded(child: TextField(controller: _dateCtrl, decoration: const InputDecoration(labelText: 'Slip Date *', suffixIcon: Icon(Icons.calendar_today, size: 16)))),
-                    const SizedBox(width: 16),
-                    Expanded(child: TextField(controller: _slipNoCtrl, decoration: const InputDecoration(labelText: 'Pump Slip / Memo Number', hintText: 'e.g. SLIP-8841'))),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
                     Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: _selectedPumpId,
-                        isExpanded: true,
-                        decoration: const InputDecoration(labelText: 'Petrol Pump Station *'),
-                        items: _pumps.map((p) => DropdownMenuItem(value: p['id']?.toString(), child: Text(p['name'] ?? '', overflow: TextOverflow.ellipsis))).toList(),
-                        onChanged: (v) => setState(() => _selectedPumpId = v),
+                      child: TextField(
+                        controller: _dateCtrl,
+                        decoration: const InputDecoration(labelText: 'Dispense Date', suffixIcon: Icon(Icons.calendar_today, size: 16)),
                       ),
                     ),
                     const SizedBox(width: 16),
                     Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: _selectedTruckId,
-                        isExpanded: true,
-                        decoration: const InputDecoration(labelText: 'Select Truck *'),
-                        items: _trucks.map((t) => DropdownMenuItem(value: t['id']?.toString(), child: Text('${t['truck_no'] ?? t['truckNo']} - ${t['owner_name'] ?? t['ownerName']}', overflow: TextOverflow.ellipsis))).toList(),
-                        onChanged: (v) => setState(() => _selectedTruckId = v),
+                      child: TextField(
+                        controller: _slipNoCtrl,
+                        decoration: const InputDecoration(labelText: 'Pump Slip / Memo #'),
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(child: TextField(controller: _litersCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Fuel Quantity (Liters)'), onChanged: (_) => _recalcAmount())),
-                    const SizedBox(width: 16),
-                    Expanded(child: TextField(controller: _rateCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Rate / Liter (₹)'), onChanged: (_) => _recalcAmount())),
-                  ],
+                SearchableDropdown(
+                  value: _selectedTruckId,
+                  label: 'Assigned Truck',
+                  hint: '-- Select Truck Plate --',
+                  items: _trucks.map((t) => DropdownSearchItem(id: t['id']?.toString() ?? '', label: t['truck_no'] ?? t['truckNo'] ?? '')).toList(),
+                  onChanged: (v) => setState(() => _selectedTruckId = v),
                 ),
                 const SizedBox(height: 16),
-                TextField(controller: _amountCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Total Net Amount (₹) *'), onChanged: (_) => setState(() {})),
+                SearchableDropdown(
+                  value: _selectedPumpId,
+                  label: 'Petrol Pump Station',
+                  hint: '-- Select Pump Account --',
+                  items: _pumps.map((p) => DropdownSearchItem(id: p['id']?.toString() ?? '', label: p['name'] ?? '', subtitle: 'Bal: ₹${p['current_balance'] ?? 0}')).toList(),
+                  onChanged: (v) => setState(() => _selectedPumpId = v),
+                ),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: _litersCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(labelText: 'Liters Dispensed'),
+                        onChanged: (_) => _calculateTotal(),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextField(
+                        controller: _rateCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(labelText: 'Diesel Rate (₹/L)'),
+                        onChanged: (_) => _calculateTotal(),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextField(
+                        controller: _amountCtrl,
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(labelText: 'Total Amount (₹)*'),
+                        onChanged: (_) => setState(() {}),
+                      ),
+                    ),
+                  ],
+                ),
                 const SizedBox(height: 16),
                 SlipImagePicker(
-                  label: 'Attach Stamped Pump Cash Memo / Fuel Slip',
+                  label: 'Attach Pump Memo Slip (Photo)',
+                  initialBase64: _slipImage,
                   onImageSelected: (b64) => setState(() => _slipImage = b64),
-                ),
-                const SizedBox(height: 20),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    ElevatedButton.icon(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2563EB),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      ),
-                      onPressed: _isSubmitting ? null : _handleSubmit,
-                      icon: const Icon(Icons.send, size: 16, color: Colors.white),
-                      label: Text(_isSubmitting ? 'Saving...' : 'Save Diesel Slip', style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
-                    ),
-                  ],
                 ),
               ],
             ),

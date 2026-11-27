@@ -1,14 +1,18 @@
 import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
 import { DbService } from '../db/db.service';
+import { ActivityService } from '../activity/activity.service';
 import { CreateTripDto } from './dto/create-trip.dto';
 import Decimal from 'decimal.js';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class TripsService {
-  constructor(private db: DbService) {}
+  constructor(
+    private db: DbService,
+    private activityService: ActivityService,
+  ) {}
 
-  async create(dto: CreateTripDto) {
+  async create(dto: CreateTripDto, user?: any) {
     const check = await this.db.query('SELECT id FROM trips WHERE trip_no = ?', [dto.tripNo]);
     if (check.rows.length > 0) {
       throw new ConflictException(`Trip No ${dto.tripNo} already exists`);
@@ -148,10 +152,19 @@ export class TripsService {
       );
     }
 
+    if (user?.role === 'MANAGER') {
+      await this.db.query(
+        'UPDATE trips SET approval_status = ?, created_by = ? WHERE id = ?',
+        ['PENDING', user.id || null, id],
+      );
+      await this.activityService.logAction(user, 'CREATE', 'trips', id, `Created trip ${dto.tripNo}`);
+    }
+
     return this.findOne(id);
   }
 
-  async findAll(destinationId?: string, partyId?: string, companyCode?: string) {
+  async findAll(destinationId?: string, partyId?: string, companyCode?: string, user?: any) {
+    await this.activityService.logAction(user, 'VIEW', 'trips', undefined, 'Viewed Trips (Today & Yesterday)');
     let sql = `
       SELECT t.*, trk.truck_no, trk.owner_name, d.name as destination_name,
              p.name as party_name, transp.name as transporter_name,
@@ -167,9 +180,13 @@ export class TripsService {
       LEFT JOIN parties p ON t.party_id = p.id
       LEFT JOIN transporters transp ON transp.id = (SELECT tr.id FROM transporters tr WHERE tr.id = t.transporter_id OR REPLACE(REPLACE(UPPER(tr.name), '.', ''), ' ', '_') = t.company_code LIMIT 1)
       LEFT JOIN settlements s ON t.id = s.trip_id
-      WHERE 1=1
+      WHERE COALESCE(t.approval_status, 'APPROVED') = 'APPROVED'
     `;
     const params: any[] = [];
+
+    if (user?.role === 'MANAGER') {
+      sql += ` AND DATE(COALESCE(t.unloading_date, t.created_at)) >= DATE_SUB(CURDATE(), INTERVAL 1 DAY)`;
+    }
 
     if (destinationId) {
       params.push(destinationId);

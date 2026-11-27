@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'core/theme/app_theme.dart';
 import 'core/database/local_storage.dart';
+import 'context/navigation_context.dart';
 import 'shared/layout/main_layout.dart';
 import 'modules/dashboard/dashboard_screen.dart';
 import 'modules/dispatches/dispatches_screen.dart';
@@ -9,9 +10,15 @@ import 'modules/fuel/fuel_screen.dart';
 import 'modules/settlements/settlements_screen.dart';
 import 'modules/payments/payments_screen.dart';
 import 'modules/outstanding/outstanding_screen.dart';
+import 'modules/pumps/pumps_screen.dart';
 import 'modules/reports/reports_screen.dart';
 import 'modules/trucks/trucks_screen.dart';
+import 'modules/masters/transporters_screen.dart';
+import 'modules/masters/sources_screen.dart';
+import 'modules/masters/destinations_screen.dart';
+import 'modules/masters/parties_screen.dart';
 import 'modules/reconcile/reconcile_screen.dart';
+import 'modules/migration/migration_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -41,32 +48,55 @@ class RootNavigationHost extends StatefulWidget {
 }
 
 class _RootNavigationHostState extends State<RootNavigationHost> {
-  int _currentIndex = 0;
+  final _navContext = NavigationContext();
+
+  @override
+  void initState() {
+    super.initState();
+    _navContext.addListener(_onStateChange);
+  }
+
+  @override
+  void dispose() {
+    _navContext.removeListener(_onStateChange);
+    super.dispose();
+  }
+
+  void _onStateChange() {
+    if (mounted) setState(() {});
+  }
 
   void _onNavigate(int index) {
-    setState(() => _currentIndex = index);
+    _navContext.navigateTo(index);
   }
 
   @override
   Widget build(BuildContext context) {
+    final currentIndex = _navContext.currentIndex;
     final screens = [
-      DashboardScreen(onNavigate: _onNavigate), // 0: Operations
-      const DispatchesScreen(),                 // 1: Dispatches
-      const TripsScreen(),                      // 2: Trips & Freight
+      DashboardScreen(onNavigate: _onNavigate), // 0: Dashboard
+      DispatchesScreen(onNavigate: _onNavigate),// 1: Dispatches
+      TripsScreen(onNavigate: _onNavigate),     // 2: Trips & Freight
       const FuelScreen(),                       // 3: Fuel & Diesel
       const SettlementsScreen(),                // 4: Settlements
       const PaymentsScreen(),                   // 5: Payments
       const OutstandingScreen(),                // 6: Outstanding
-      const ReportsScreen(),                    // 7: Reports
-      const TrucksScreen(),                     // 8: Truck Master
-      const ReconcileScreen(),                  // 9: Reconcile Plant Pass
+      const PumpsScreen(),                      // 7: Pump Accounts
+      const ReportsScreen(),                    // 8: Reports & Analytics
+      const TrucksScreen(),                     // 9: Truck Master
+      const TransportersScreen(),               // 10: Transporters
+      const SourcesScreen(),                    // 11: Sources Master
+      const DestinationsScreen(),               // 12: Destinations
+      const PartiesScreen(),                    // 13: Parties
+      const ReconcileScreen(),                  // 14: Reconcile Plant Pass
+      const MigrationScreen(),                  // 15: Excel Migration
     ];
 
     return MainLayout(
-      currentIndex: _currentIndex,
+      currentIndex: currentIndex,
       onNavigate: _onNavigate,
       child: IndexedStack(
-        index: _currentIndex,
+        index: currentIndex,
         children: screens,
       ),
     );

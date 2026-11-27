@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Delete, Param, Body, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, Body, Query, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { DispatchesService } from './dispatches.service';
 import { CreateDispatchDto } from './dto/create-dispatch.dto';
@@ -9,11 +9,11 @@ export class DispatchesController {
   constructor(private readonly dispatchesService: DispatchesService) {}
 
   @Post()
-  create(@Body() body: any) {
+  create(@Body() body: any, @Req() req: any) {
     if (Array.isArray(body)) {
-      return this.dispatchesService.createMultiple(body);
+      return this.dispatchesService.createMultiple(body, req.user);
     }
-    return this.dispatchesService.create(body);
+    return this.dispatchesService.create(body, req.user);
   }
 
   @Get()
@@ -21,8 +21,9 @@ export class DispatchesController {
     @Query('sourceId') sourceId?: string,
     @Query('truckId') truckId?: string,
     @Query('companyCode') companyCode?: string,
+    @Req() req?: any,
   ) {
-    return this.dispatchesService.findAll(sourceId, truckId, companyCode);
+    return this.dispatchesService.findAll(sourceId, truckId, companyCode, req?.user);
   }
 
   @Delete(':id')

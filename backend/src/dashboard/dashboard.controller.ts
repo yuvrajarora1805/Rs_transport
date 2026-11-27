@@ -1,4 +1,4 @@
-import { Controller, Get, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Query, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { DashboardService } from './dashboard.service';
 
@@ -8,13 +8,13 @@ export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
 
   @Get('kpis')
-  getKpis(@Query('companyCode') companyCode?: string) {
-    return this.dashboardService.getKpis(companyCode);
+  getKpis(@Query('companyCode') companyCode?: string, @Req() req?: any) {
+    return this.dashboardService.getKpis(companyCode, req?.user);
   }
 
   @Get('recent')
-  getRecentActivity(@Query('companyCode') companyCode?: string) {
-    return this.dashboardService.getRecentActivity(companyCode);
+  getRecentActivity(@Query('companyCode') companyCode?: string, @Req() req?: any) {
+    return this.dashboardService.getRecentActivity(companyCode, req?.user);
   }
 }
 

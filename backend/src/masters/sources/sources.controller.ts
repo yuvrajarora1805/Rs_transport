@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Query, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Query, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { SourcesService } from './sources.service';
 import { CreateSourceDto } from './dto/create-source.dto';
@@ -9,13 +9,13 @@ export class SourcesController {
   constructor(private readonly sourcesService: SourcesService) {}
 
   @Post()
-  create(@Body() dto: CreateSourceDto) {
-    return this.sourcesService.create(dto);
+  create(@Body() dto: CreateSourceDto, @Req() req: any) {
+    return this.sourcesService.create(dto, req.user);
   }
 
   @Get()
-  findAll(@Query('companyCode') companyCode?: string) {
-    return this.sourcesService.findAll(companyCode);
+  findAll(@Query('companyCode') companyCode?: string, @Req() req?: any) {
+    return this.sourcesService.findAll(companyCode, req?.user);
   }
 
   @Get(':id')

@@ -1,11 +1,15 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { DbService } from '../db/db.service';
+import { ActivityService } from '../activity/activity.service';
 import { CreateDispatchDto } from './dto/create-dispatch.dto';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class DispatchesService {
-  constructor(private db: DbService) {}
+  constructor(
+    private db: DbService,
+    private activityService: ActivityService,
+  ) {}
 
   private async checkDuplicateSrNo(srNo?: string, companyCode?: string) {
     if (!srNo || !srNo.trim()) return;
@@ -21,23 +25,26 @@ export class DispatchesService {
     }
   }
 
-  async create(dto: CreateDispatchDto) {
+  async create(dto: CreateDispatchDto, user?: any) {
     await this.checkDuplicateSrNo(dto.srNo, dto.companyCode);
-    return this.insertSingleDispatch(dto);
+    const created = await this.insertSingleDispatch(dto, user);
+    await this.activityService.logAction(user, 'CREATE', 'dispatches', created.id, `Created dispatch ${dto.srNo || ''}`);
+    return created;
   }
 
-  async createMultiple(dtos: CreateDispatchDto[]) {
+  async createMultiple(dtos: CreateDispatchDto[], user?: any) {
     if (dtos.length === 0) return [];
     // Verify invoice / SR number uniqueness once for the whole multi-truck batch
     await this.checkDuplicateSrNo(dtos[0].srNo, dtos[0].companyCode);
     const results = [];
     for (const dto of dtos) {
-      results.push(await this.insertSingleDispatch(dto));
+      results.push(await this.insertSingleDispatch(dto, user));
     }
+    await this.activityService.logAction(user, 'CREATE', 'dispatches', results[0]?.id, `Created ${results.length} dispatches`);
     return results;
   }
 
-  private async insertSingleDispatch(dto: CreateDispatchDto) {
+  private async insertSingleDispatch(dto: CreateDispatchDto, user?: any) {
     const truck = await this.db.query('SELECT id FROM trucks WHERE id = ?', [dto.truckId]);
     if (truck.rows.length === 0) {
       throw new NotFoundException(`Truck with ID ${dto.truckId} not found`);
@@ -94,6 +101,13 @@ export class DispatchesService {
       }
     }
 
+    if (user?.role === 'MANAGER') {
+      await this.db.query(
+        'UPDATE dispatches SET approval_status = ?, created_by = ? WHERE id = ?',
+        ['PENDING', user.id || null, id],
+      );
+    }
+
     const res = await this.db.query(
       `SELECT d.*, t.truck_no, s.name as source_name, t.mobile_no as truck_mobile_no
        FROM dispatches d
@@ -106,7 +120,8 @@ export class DispatchesService {
     return row ? { ...row, mobile_no: row.driver_mobile || row.truck_mobile_no } : null;
   }
 
-  async findAll(sourceId?: string, truckId?: string, companyCode?: string) {
+  async findAll(sourceId?: string, truckId?: string, companyCode?: string, user?: any) {
+    await this.activityService.logAction(user, 'VIEW', 'dispatches', undefined, 'Viewed Dispatches (Today & Yesterday)');
     let sql = `
       SELECT d.*, t.truck_no, t.owner_name, t.mobile_no as truck_mobile_no,
              s.name as source_name,
@@ -117,9 +132,13 @@ export class DispatchesService {
       JOIN trucks t ON d.truck_id = t.id
       JOIN sources s ON d.source_id = s.id
       LEFT JOIN trips trp ON trp.dispatch_id = d.id
-      WHERE d.is_cancelled = false
+      WHERE d.is_cancelled = false AND COALESCE(d.approval_status, 'APPROVED') = 'APPROVED'
     `;
     const params: any[] = [];
+
+    if (user?.role === 'MANAGER') {
+      sql += ` AND DATE(d.date) >= DATE_SUB(CURDATE(), INTERVAL 1 DAY)`;
+    }
 
     if (sourceId) {
       params.push(sourceId);

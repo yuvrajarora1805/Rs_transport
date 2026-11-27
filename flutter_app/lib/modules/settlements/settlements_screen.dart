@@ -1,20 +1,25 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import '../../core/api/api_client.dart';
-import '../../core/database/local_storage.dart';
 import '../../core/theme/app_theme.dart';
 import '../../components/layout/erp_header.dart';
+import '../../context/company_context.dart';
+import '../../context/navigation_context.dart';
 import 'new_settlement_form.dart';
+import 'settlement_table_row.dart';
+import 'settlement_mobile_card.dart';
 
 class SettlementsScreen extends StatefulWidget {
-  const SettlementsScreen({super.key});
+  final Function(int)? onNavigate;
+  const SettlementsScreen({super.key, this.onNavigate});
 
   @override
   State<SettlementsScreen> createState() => _SettlementsScreenState();
 }
 
 class _SettlementsScreenState extends State<SettlementsScreen> {
-  bool _isCreatingNew = true;
+  bool _isCreatingNew = false;
+  Map<String, dynamic>? _prefillParams;
   List<Map<String, dynamic>> _settlements = [];
   bool _loading = true;
   String _search = '';
@@ -22,24 +27,69 @@ class _SettlementsScreenState extends State<SettlementsScreen> {
   @override
   void initState() {
     super.initState();
+    NavigationContext().addListener(_onNavParamsChanged);
+    CompanyState().addListener(_loadSettlements);
+    _checkPendingNav();
     _loadSettlements();
   }
 
+  @override
+  void dispose() {
+    NavigationContext().removeListener(_onNavParamsChanged);
+    CompanyState().removeListener(_loadSettlements);
+    super.dispose();
+  }
+
+  void _onNavParamsChanged() {
+    if (NavigationContext().currentIndex == 4) _checkPendingNav();
+  }
+
+  void _checkPendingNav() {
+    final params = NavigationContext().consumeParams();
+    if (params.isNotEmpty) {
+      setState(() {
+        _isCreatingNew = true;
+        _prefillParams = params;
+      });
+    }
+  }
+
   Future<void> _loadSettlements() async {
+    if (!mounted) return;
     setState(() => _loading = true);
     try {
-      final res = await ApiClient().get('/settlements');
-      if (res.statusCode == 200 && res.data is List) {
-        final list = List<Map<String, dynamic>>.from(res.data);
-        _settlements = list;
-        await LocalStorage().saveSettlements(list);
-      } else {
-        _settlements = await LocalStorage().getSettlements();
+      final code = CompanyState().activeCompany.codeStr;
+      final res = await ApiClient().get('/settlements?companyCode=$code');
+      if (mounted && res.data is List) {
+        setState(() => _settlements = List<Map<String, dynamic>>.from(res.data));
       }
-    } catch (_) {
-      _settlements = await LocalStorage().getSettlements();
-    } finally {
+    } catch (_) {} finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _deleteSettlement(String? id) async {
+    if (id == null) return;
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Settlement', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15)),
+        content: const Text('Are you sure you want to delete this trip settlement?'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFE11D48)),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Delete', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+    if (confirm == true) {
+      try {
+        await ApiClient().delete('/settlements/$id');
+        _loadSettlements();
+      } catch (_) {}
     }
   }
 
@@ -63,110 +113,182 @@ class _SettlementsScreenState extends State<SettlementsScreen> {
     return Column(
       children: [
         ERPHeader(
-          title: _isCreatingNew ? 'Create Trip Settlement' : 'Driver Freight Settlements',
-          subtitle: _isCreatingNew ? 'Calculate freight deductions, commission & net payable balance' : 'List of all settled freight trips and driver vouchers',
-          actions: Row(
-            children: [
-              OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: _isCreatingNew ? AppColors.primary : AppColors.textMain,
-                  side: BorderSide(color: _isCreatingNew ? AppColors.primary : AppColors.border),
-                ),
-                onPressed: () => setState(() => _isCreatingNew = true),
-                icon: const Icon(Icons.add_circle_outline, size: 16),
-                label: const Text('New Settlement'),
-              ),
-              const SizedBox(width: 8),
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: !_isCreatingNew ? AppColors.primary : AppColors.background,
-                  foregroundColor: !_isCreatingNew ? Colors.white : AppColors.textMain,
-                  elevation: 0,
-                ),
-                onPressed: () {
-                  setState(() => _isCreatingNew = false);
-                  _loadSettlements();
-                },
-                icon: const Icon(Icons.list_alt, size: 16),
-                label: Text('Settled List (${_settlements.length})'),
-              ),
-            ],
+          title: 'Settlement Management',
+          subtitle: 'Disbursement settlements, truck balances & payment vouchers',
+          actions: ElevatedButton.icon(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () => setState(() {
+              _isCreatingNew = !_isCreatingNew;
+              _prefillParams = null;
+            }),
+            icon: Icon(_isCreatingNew ? Icons.list_alt : Icons.add_circle_outline, size: 15),
+            label: Text(_isCreatingNew ? 'View Settlements' : '+ New Settlement', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
           ),
         ),
         Expanded(
           child: _isCreatingNew
               ? NewSettlementFormView(
+                  initialParams: _prefillParams,
                   onSaved: () {
-                    setState(() => _isCreatingNew = false);
+                    setState(() {
+                      _isCreatingNew = false;
+                      _prefillParams = null;
+                    });
                     _loadSettlements();
                   },
                 )
-              : _buildListView(),
+              : _buildResponsiveView(),
         ),
       ],
     );
   }
 
-  Widget _buildListView() {
+  Widget _buildResponsiveView() {
+    final q = _search.toLowerCase();
     final filtered = _settlements.where((s) {
-      final q = _search.toLowerCase();
+      final trip = (s['trip_no'] ?? s['tripNo'] ?? '').toString().toLowerCase();
       final truck = (s['truck_no'] ?? s['truckNo'] ?? '').toString().toLowerCase();
-      final id = (s['id'] ?? '').toString().toLowerCase();
-      return truck.contains(q) || id.contains(q);
+      final dest = (s['destination_name'] ?? s['destination'] ?? '').toString().toLowerCase();
+      return trip.contains(q) || truck.contains(q) || dest.contains(q);
     }).toList();
 
-    return Padding(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        children: [
-          TextField(
-            decoration: const InputDecoration(
-              prefixIcon: Icon(Icons.search, size: 20),
-              hintText: 'Search settlements by truck plate or voucher ID...',
-            ),
-            onChanged: (v) => setState(() => _search = v),
-          ),
-          const SizedBox(height: 16),
-          Expanded(
-            child: _loading
-                ? const Center(child: CircularProgressIndicator())
-                : filtered.isEmpty
-                    ? const Center(child: Text('No settlements recorded yet.', style: TextStyle(color: AppColors.textMuted)))
-                    : ListView.separated(
-                        itemCount: filtered.length,
-                        separatorBuilder: (_, __) => const SizedBox(height: 8),
-                        itemBuilder: (ctx, i) {
-                          final item = filtered[i];
-                          final hasSlip = item['slip_image'] != null && item['slip_image'] != '';
-                          final payable = item['net_payable'] ?? item['netPayable'] ?? 0;
-                          return Card(
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: AppColors.border)),
-                            child: ListTile(
-                              leading: const CircleAvatar(backgroundColor: Color(0xFF6366F1), child: Icon(Icons.fact_check, color: Colors.white, size: 18)),
-                              title: Text(item['truck_no'] ?? item['truckNo'] ?? 'TRUCK SETTLEMENT', style: const TextStyle(fontWeight: FontWeight.bold)),
-                              subtitle: Text('Diesel: ₹${item['diesel_amount'] ?? 0} • Advance: ₹${item['advance_amount'] ?? 0} • Comm: ₹${item['commission'] ?? 0}'),
-                              trailing: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  if (hasSlip)
-                                    IconButton(
-                                      icon: const Icon(Icons.image_outlined, color: AppColors.primary, size: 20),
-                                      onPressed: () => _viewSlip(item['slip_image']),
-                                      tooltip: 'View Settlement Slip',
-                                    ),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                    decoration: BoxDecoration(color: const Color(0xFFECFDF5), borderRadius: BorderRadius.circular(8)),
-                                    child: Text('₹$payable', style: const TextStyle(color: Color(0xFF047857), fontWeight: FontWeight.bold, fontSize: 13)),
-                                  ),
-                                ],
-                              ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 768;
+
+        if (isMobile) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Column(
+              children: [
+                _buildSearchHeader(filtered.length, isMobile: true),
+                const SizedBox(height: 8),
+                Expanded(
+                  child: _loading
+                      ? const Center(child: CircularProgressIndicator())
+                      : filtered.isEmpty
+                          ? const Center(child: Text('No settlements recorded yet', style: TextStyle(color: AppColors.textMuted)))
+                          : ListView.builder(
+                              itemCount: filtered.length,
+                              itemBuilder: (ctx, i) {
+                                final s = filtered[i];
+                                final out = num.tryParse((s['outstanding'] ?? 0).toString()) ?? 0;
+                                return SettlementMobileCard(
+                                  settlement: s,
+                                  onViewSlip: () => _viewSlip(s['slip_image']),
+                                  onRecordPayment: () => NavigationContext().navigateTo(5, params: {'settlementId': s['id'], 'outstanding': out}),
+                                  onDelete: () => _deleteSettlement(s['id']?.toString()),
+                                );
+                              },
                             ),
-                          );
-                        },
-                      ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return Padding(
+          padding: const EdgeInsets.all(16),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: const Color(0xFFE2E8F0)),
+              boxShadow: const [BoxShadow(color: Color(0x05000000), blurRadius: 4, offset: Offset(0, 1))],
+            ),
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              children: [
+                _buildSearchHeader(filtered.length, isMobile: false),
+                _buildTableHeader(),
+                Expanded(
+                  child: _loading
+                      ? const Center(child: CircularProgressIndicator())
+                      : filtered.isEmpty
+                          ? const Center(child: Text('No settlements recorded yet', style: TextStyle(color: AppColors.textMuted)))
+                          : ListView.builder(
+                              itemCount: filtered.length,
+                              itemBuilder: (ctx, i) {
+                                final s = filtered[i];
+                                final out = num.tryParse((s['outstanding'] ?? 0).toString()) ?? 0;
+                                return SettlementTableRow(
+                                  settlement: s,
+                                  onViewSlip: () => _viewSlip(s['slip_image']),
+                                  onRecordPayment: () => NavigationContext().navigateTo(5, params: {'settlementId': s['id'], 'outstanding': out}),
+                                  onDelete: () => _deleteSettlement(s['id']?.toString()),
+                                );
+                              },
+                            ),
+                ),
+              ],
+            ),
           ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSearchHeader(int count, {required bool isMobile}) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: isMobile ? BorderRadius.circular(12) : BorderRadius.zero,
+        border: isMobile ? Border.all(color: const Color(0xFFE2E8F0)) : const Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            height: 38,
+            child: TextField(
+              decoration: InputDecoration(
+                hintText: 'Search by trip #, truck plate, or destination...',
+                hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                prefixIcon: const Icon(Icons.search, size: 18, color: Color(0xFF64748B)),
+                filled: true,
+                fillColor: Colors.white,
+                contentPadding: EdgeInsets.zero,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFFCBD5E1))),
+              ),
+              style: const TextStyle(fontSize: 12),
+              onChanged: (v) => setState(() => _search = v),
+            ),
+          ),
+          if (isMobile) ...[
+            const SizedBox(height: 6),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Text('Showing $count of ${_settlements.length} records', style: const TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTableHeader() {
+    return Container(
+      color: const Color(0xFFF8FAFC),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: const Row(
+        children: [
+          SizedBox(width: 110, child: Text('TRIP NO', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: Color(0xFF64748B)))),
+          SizedBox(width: 120, child: Text('TRUCK NO', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: Color(0xFF64748B)))),
+          SizedBox(width: 120, child: Text('DESTINATION', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: Color(0xFF64748B)))),
+          SizedBox(width: 100, child: Text('GROSS FREIGHT', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: Color(0xFF64748B)))),
+          SizedBox(width: 95, child: Text('DIESEL (₹)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: Color(0xFF64748B)))),
+          SizedBox(width: 105, child: Text('NET PAYABLE', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: Color(0xFF64748B)))),
+          SizedBox(width: 95, child: Text('PAID (₹)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: Color(0xFF64748B)))),
+          Expanded(child: Text('OUTSTANDING (₹)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: Color(0xFF64748B)))),
+          SizedBox(width: 105, child: Text('STATUS', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: Color(0xFF64748B)))),
+          SizedBox(width: 130, child: Text('ACTION', textAlign: TextAlign.right, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: Color(0xFF64748B)))),
         ],
       ),
     );

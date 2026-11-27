@@ -1,35 +1,44 @@
 import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
 import { DbService } from '../../db/db.service';
+import { ActivityService } from '../../activity/activity.service';
 import { CreateSourceDto } from './dto/create-source.dto';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class SourcesService {
-  constructor(private db: DbService) {}
+  constructor(
+    private db: DbService,
+    private activityService: ActivityService,
+  ) {}
 
-  async create(dto: CreateSourceDto) {
+  async create(dto: CreateSourceDto, user?: any) {
     const check = await this.db.query('SELECT id FROM sources WHERE name = ?', [dto.name]);
     if (check.rows.length > 0) {
       throw new ConflictException(`Source "${dto.name}" already exists`);
     }
 
     const id = uuidv4();
+    const approvalStatus = user?.role === 'MANAGER' ? 'PENDING' : 'APPROVED';
+    const createdBy = user?.id || null;
     await this.db.query(
-      'INSERT INTO sources (id, name, contact_no) VALUES (?, ?, ?)',
-      [id, dto.name, dto.contactNo || null],
+      'INSERT INTO sources (id, name, contact_no, approval_status, created_by) VALUES (?, ?, ?, ?, ?)',
+      [id, dto.name, dto.contactNo || null, approvalStatus, createdBy],
     );
-    return { id, name: dto.name, contact_no: dto.contactNo || null };
+    await this.activityService.logAction(user, 'CREATE', 'sources', id, `Created source: ${dto.name}`);
+    return { id, name: dto.name, contact_no: dto.contactNo || null, approval_status: approvalStatus };
   }
 
-  async findAll(companyCode?: string) {
+  async findAll(companyCode?: string, user?: any) {
+    await this.activityService.logAction(user, 'VIEW', 'sources', undefined, 'Viewed Source Master list');
     const dispatchFilter = companyCode ? `AND d.company_code = '${companyCode}'` : '';
+    const managerDateFilter = user?.role === 'MANAGER' ? 'AND DATE(d.date) >= DATE_SUB(CURDATE(), INTERVAL 1 DAY)' : '';
     const res = await this.db.query(`
       SELECT s.*,
-             COUNT(CASE WHEN d.is_cancelled = false ${dispatchFilter} THEN d.id END) as dispatch_count,
-             COUNT(CASE WHEN d.is_cancelled = false THEN d.id END) as total_dispatch_count
+             COUNT(CASE WHEN d.is_cancelled = false ${dispatchFilter} ${managerDateFilter} THEN d.id END) as dispatch_count,
+             COUNT(CASE WHEN d.is_cancelled = false ${managerDateFilter} THEN d.id END) as total_dispatch_count
       FROM sources s
       LEFT JOIN dispatches d ON s.id = d.source_id
-      WHERE s.is_active = true
+      WHERE s.is_active = true AND COALESCE(s.approval_status, 'APPROVED') = 'APPROVED'
       GROUP BY s.id, s.name, s.contact_no, s.is_active, s.created_at
       ORDER BY s.name ASC
     `);

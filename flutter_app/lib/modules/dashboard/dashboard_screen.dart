@@ -57,46 +57,56 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 600;
+
     return Column(
       children: [
         ERPHeader(
           title: 'Transport ERP Dashboard',
           subtitle: 'Complete Operational & Financial Overview',
-          actions: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ElevatedButton.icon(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          actions: isMobile
+              ? IconButton(
+                  icon: const Icon(Icons.add_circle, color: AppColors.primary, size: 24),
+                  tooltip: 'New Dispatch',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                  onPressed: () => widget.onNavigate(1),
+                )
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      ),
+                      onPressed: () => widget.onNavigate(1),
+                      icon: const Icon(Icons.add, size: 14),
+                      label: const Text('New Dispatch', style: TextStyle(fontSize: 11)),
+                    ),
+                    const SizedBox(width: 6),
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      ),
+                      onPressed: () => widget.onNavigate(2),
+                      icon: const Icon(Icons.navigation, size: 14),
+                      label: const Text('Record Trip', style: TextStyle(fontSize: 11)),
+                    ),
+                  ],
                 ),
-                onPressed: () => widget.onNavigate(1),
-                icon: const Icon(Icons.add, size: 14),
-                label: const Text('New Dispatch', style: TextStyle(fontSize: 11)),
-              ),
-              const SizedBox(width: 6),
-              OutlinedButton.icon(
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                ),
-                onPressed: () => widget.onNavigate(2),
-                icon: const Icon(Icons.navigation, size: 14),
-                label: const Text('Record Trip', style: TextStyle(fontSize: 11)),
-              ),
-            ],
-          ),
         ),
         Expanded(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.all(isMobile ? 12 : 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildKpiSection(),
-                const SizedBox(height: 20),
+                const SizedBox(height: 16),
                 _buildFinancialKpiSection(),
-                const SizedBox(height: 24),
+                const SizedBox(height: 20),
                 _buildRecentTables(),
               ],
             ),
@@ -110,12 +120,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final count = constraints.maxWidth >= 900 ? 4 : 2;
+        final ratio = constraints.maxWidth < 600 ? 1.4 : 1.6;
         return GridView.count(
           crossAxisCount: count,
           shrinkWrap: true,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          childAspectRatio: 1.6,
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 10,
+          childAspectRatio: ratio,
           physics: const NeverScrollableScrollPhysics(),
           children: [
             _card('Registered Trucks', '${_kpis['totalRegisteredTrucks'] ?? 0}', Icons.directions_car, AppColors.primary),
@@ -132,12 +143,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final count = constraints.maxWidth >= 900 ? 4 : 2;
+        final ratio = constraints.maxWidth < 600 ? 1.35 : 1.6;
         return GridView.count(
           crossAxisCount: count,
           shrinkWrap: true,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
-          childAspectRatio: 1.6,
+          crossAxisSpacing: 10,
+          mainAxisSpacing: 10,
+          childAspectRatio: ratio,
           physics: const NeverScrollableScrollPhysics(),
           children: [
             _card('Total Gross Freight', '₹${_kpis['totalGrossFreight'] ?? 0}', Icons.monetization_on, AppColors.primary, sub: 'Billable freight generated'),

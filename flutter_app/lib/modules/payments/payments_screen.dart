@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import '../../core/api/api_client.dart';
 import '../../core/theme/app_theme.dart';
 import '../../components/layout/erp_header.dart';
+import '../../shared/components/module_mobile_search_header.dart';
+import 'payment_table_row.dart';
+import 'payment_mobile_card.dart';
 
 class PaymentsScreen extends StatefulWidget {
   const PaymentsScreen({super.key});
@@ -43,60 +46,172 @@ class _PaymentsScreenState extends State<PaymentsScreen> {
       return truck.contains(q) || payee.contains(q) || ref.contains(q);
     }).toList();
 
-    return Column(
-      children: [
-        const ERPHeader(
-          title: 'Payment Management',
-          subtitle: 'Freight Disbursement Vouchers, Bank Transfers & UTR Traceability',
-        ),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-          child: TextField(
-            decoration: const InputDecoration(
-              prefixIcon: Icon(Icons.search, size: 20),
-              hintText: 'Search by payee, truck plate, or UTR number...',
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isMobile = constraints.maxWidth < 768;
+
+        return Column(
+          children: [
+            ERPHeader(
+              title: isMobile ? 'Payments' : 'Payment Management',
+              subtitle: isMobile
+                  ? 'Disbursement Vouchers & UTR'
+                  : 'Freight Disbursement Vouchers, Bank Transfers & UTR Traceability',
             ),
-            onChanged: (v) => setState(() => _search = v),
+            Expanded(
+              child: Padding(
+                padding: EdgeInsets.all(isMobile ? 8 : 16),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                    boxShadow: const [
+                      BoxShadow(color: Color(0x05000000), blurRadius: 4, offset: Offset(0, 1)),
+                    ],
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: Column(
+                    children: [
+                      isMobile
+                          ? ModuleMobileSearchHeader(
+                              search: _search,
+                              onSearchChanged: (v) => setState(() => _search = v),
+                              count: filtered.length,
+                              total: _payments.length,
+                              hintText: 'Search by payee, truck, or UTR...',
+                            )
+                          : _buildDesktopSearchHeader(filtered.length),
+                      if (!isMobile) _buildTableHeader(),
+                      Expanded(
+                        child: _loading
+                            ? const Center(child: CircularProgressIndicator())
+                            : filtered.isEmpty
+                                ? const Center(
+                                    child: Text(
+                                      'No payment records recorded yet',
+                                      style: TextStyle(color: AppColors.textMuted),
+                                    ),
+                                  )
+                                : ListView.builder(
+                                    itemCount: filtered.length,
+                                    itemBuilder: (ctx, i) => isMobile
+                                        ? PaymentMobileCard(payment: filtered[i])
+                                        : PaymentTableRow(payment: filtered[i]),
+                                  ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildDesktopSearchHeader(int count) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: const BoxDecoration(
+        color: Color(0xFFF8FAFC),
+        border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: SizedBox(
+              height: 38,
+              child: TextField(
+                decoration: InputDecoration(
+                  hintText: 'Search by payee, truck plate, or UTR number...',
+                  hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF94A3B8)),
+                  prefixIcon: const Icon(Icons.search, size: 18, color: Color(0xFF64748B)),
+                  filled: true,
+                  fillColor: Colors.white,
+                  contentPadding: EdgeInsets.zero,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                  ),
+                ),
+                style: const TextStyle(fontSize: 12),
+                onChanged: (v) => setState(() => _search = v),
+              ),
+            ),
           ),
-        ),
-        Expanded(
-          child: _loading
-              ? const Center(child: CircularProgressIndicator())
-              : filtered.isEmpty
-                  ? const Center(child: Text('No payment records recorded yet.', style: TextStyle(color: AppColors.textMuted)))
-                  : ListView.separated(
-                      padding: const EdgeInsets.all(20),
-                      itemCount: filtered.length,
-                      separatorBuilder: (_, __) => const SizedBox(height: 8),
-                      itemBuilder: (ctx, i) {
-                        final p = filtered[i];
-                        final amt = p['amount'] ?? 0;
-                        final method = p['method'] ?? 'CASH';
-                        return Card(
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: AppColors.border)),
-                          child: ListTile(
-                            leading: const CircleAvatar(backgroundColor: Color(0xFF10B981), child: Icon(Icons.credit_card, color: Colors.white, size: 18)),
-                            title: Text(p['truck_no'] ?? 'TRUCK DISBURSEMENT', style: const TextStyle(fontWeight: FontWeight.bold)),
-                            subtitle: Text('Payee: ${p['paid_to'] ?? '-'} • Date: ${p['payment_date'] ?? '-'} • Ref: ${p['ref_no'] ?? '-'}'),
-                            trailing: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text('₹$amt', style: const TextStyle(fontWeight: FontWeight.w900, color: Color(0xFF047857), fontSize: 14)),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                  decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(4)),
-                                  child: Text(method, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF475569))),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-        ),
-      ],
+          const SizedBox(width: 16),
+          Text(
+            'Showing $count of ${_payments.length} records',
+            style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTableHeader() {
+    return Container(
+      color: const Color(0xFFF8FAFC),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      child: const Row(
+        children: [
+          SizedBox(
+            width: 110,
+            child: Text(
+              'PAYMENT DATE',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: Color(0xFF64748B)),
+            ),
+          ),
+          SizedBox(
+            width: 140,
+            child: Text(
+              'TRUCK NO',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: Color(0xFF64748B)),
+            ),
+          ),
+          SizedBox(
+            width: 120,
+            child: Text(
+              'AMOUNT PAID',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: Color(0xFF64748B)),
+            ),
+          ),
+          SizedBox(
+            width: 110,
+            child: Text(
+              'PAYMENT MODE',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: Color(0xFF64748B)),
+            ),
+          ),
+          SizedBox(
+            width: 130,
+            child: Text(
+              'UTR / REF NO',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: Color(0xFF64748B)),
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(
+              'RECIPIENT / PAYEE',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: Color(0xFF64748B)),
+            ),
+          ),
+          Expanded(
+            flex: 2,
+            child: Text(
+              'REMARKS',
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 10, color: Color(0xFF64748B)),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

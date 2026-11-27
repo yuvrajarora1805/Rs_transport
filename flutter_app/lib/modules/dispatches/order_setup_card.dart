@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/theme/app_theme.dart';
+import '../../shared/components/searchable_dropdown.dart';
 import 'quick_dialogs.dart';
 
 class OrderSetupCard extends StatelessWidget {
@@ -52,13 +53,73 @@ class OrderSetupCard extends StatelessWidget {
     );
   }
 
+  Widget _buildSourceField(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('Booking Source *', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+            InkWell(
+              onTap: () async {
+                final res = await QuickAddDialogs.showAddSource(context);
+                if (res != null) onSourceAdded(res);
+              },
+              child: const Text('+ Add Source', style: TextStyle(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        SearchableDropdown(
+          value: selectedSourceId,
+          label: 'Source',
+          hint: '-- Type to search source --',
+          items: sources.map((s) => DropdownSearchItem(id: s['id']?.toString() ?? '', label: s['name'] ?? '', subtitle: s['city'])).toList(),
+          onChanged: onSourceChanged,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDestField(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('Destination Place', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+            InkWell(
+              onTap: () async {
+                final res = await QuickAddDialogs.showAddDestination(context);
+                if (res != null) onDestAdded(res);
+              },
+              child: const Text('+ Add Destination', style: TextStyle(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        SearchableDropdown(
+          value: selectedDestId,
+          label: 'Destination',
+          hint: '-- Type to search destination --',
+          items: destinations.map((d) => DropdownSearchItem(id: d['id']?.toString() ?? '', label: d['name'] ?? '', subtitle: d['state'])).toList(),
+          onChanged: onDestChanged,
+        ),
+      ],
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 600;
+
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: AppColors.border)),
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: EdgeInsets.all(isMobile ? 14 : 20),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -76,85 +137,47 @@ class OrderSetupCard extends StatelessWidget {
               ],
             ),
             const Divider(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: dateCtrl,
-                    decoration: const InputDecoration(labelText: 'Dispatch Date *', suffixIcon: Icon(Icons.calendar_today, size: 16)),
+            if (isMobile) ...[
+              TextField(
+                controller: dateCtrl,
+                decoration: const InputDecoration(labelText: 'Dispatch Date *', suffixIcon: Icon(Icons.calendar_today, size: 16)),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: srNoCtrl,
+                decoration: const InputDecoration(labelText: 'SR / Reference Number', hintText: 'e.g. 1001'),
+              ),
+              const SizedBox(height: 12),
+              _buildSourceField(context),
+              const SizedBox(height: 12),
+              _buildDestField(context),
+            ] else ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: dateCtrl,
+                      decoration: const InputDecoration(labelText: 'Dispatch Date *', suffixIcon: Icon(Icons.calendar_today, size: 16)),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: TextField(
-                    controller: srNoCtrl,
-                    decoration: const InputDecoration(labelText: 'SR / Reference Number', hintText: 'e.g. 1001'),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: TextField(
+                      controller: srNoCtrl,
+                      decoration: const InputDecoration(labelText: 'SR / Reference Number', hintText: 'e.g. 1001'),
+                    ),
                   ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('Booking Source *', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                          InkWell(
-                            onTap: () async {
-                              final res = await QuickAddDialogs.showAddSource(context);
-                              if (res != null) onSourceAdded(res);
-                            },
-                            child: const Text('+ Add Source', style: TextStyle(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.bold)),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      DropdownButtonFormField<String>(
-                        value: selectedSourceId,
-                        isExpanded: true,
-                        decoration: const InputDecoration(hintText: '-- Choose Source --'),
-                        items: sources.map((s) => DropdownMenuItem(value: s['id']?.toString(), child: Text(s['name'] ?? ''))).toList(),
-                        onChanged: onSourceChanged,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text('Destination Place', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                          InkWell(
-                            onTap: () async {
-                              final res = await QuickAddDialogs.showAddDestination(context);
-                              if (res != null) onDestAdded(res);
-                            },
-                            child: const Text('+ Add Destination', style: TextStyle(fontSize: 11, color: AppColors.primary, fontWeight: FontWeight.bold)),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      DropdownButtonFormField<String>(
-                        value: selectedDestId,
-                        isExpanded: true,
-                        decoration: const InputDecoration(hintText: '-- Choose Destination --'),
-                        items: destinations.map((d) => DropdownMenuItem(value: d['id']?.toString(), child: Text(d['name'] ?? ''))).toList(),
-                        onChanged: onDestChanged,
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(child: _buildSourceField(context)),
+                  const SizedBox(width: 16),
+                  Expanded(child: _buildDestField(context)),
+                ],
+              ),
+            ],
             const SizedBox(height: 16),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,

@@ -23,10 +23,11 @@ class ERPHeader extends StatelessWidget {
     final sync = SyncService();
 
     final isDesktop = MediaQuery.of(context).size.width >= 900;
+    final isMobile = MediaQuery.of(context).size.width < 600;
 
     return Container(
-      height: 70,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
+      height: 64,
+      padding: EdgeInsets.symmetric(horizontal: isMobile ? 8 : 16),
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0))),
@@ -35,7 +36,9 @@ class ERPHeader extends StatelessWidget {
         children: [
           if (!isDesktop) ...[
             IconButton(
-              icon: const Icon(Icons.menu, size: 20, color: Color(0xFF334155)),
+              icon: const Icon(Icons.menu, size: 22, color: Color(0xFF334155)),
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 36, minHeight: 36),
               onPressed: () => Scaffold.of(context).openDrawer(),
             ),
             const SizedBox(width: 4),
@@ -53,15 +56,15 @@ class ERPHeader extends StatelessWidget {
               children: [
                 Text(
                   title,
-                  style: const TextStyle(
-                    fontSize: 17,
+                  style: TextStyle(
+                    fontSize: isMobile ? 15 : 17,
                     fontWeight: FontWeight.bold,
-                    color: Color(0xFF0F172A),
+                    color: const Color(0xFF0F172A),
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                if (subtitle != null)
+                if (subtitle != null && !isMobile)
                   Text(
                     subtitle!,
                     style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
@@ -71,13 +74,13 @@ class ERPHeader extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
           // Sync Pill with Status Dot
           InkWell(
             onTap: () => sync.checkSyncStatus(),
             borderRadius: BorderRadius.circular(20),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+              padding: EdgeInsets.symmetric(horizontal: isMobile ? 6 : 9, vertical: 5),
               decoration: BoxDecoration(
                 color: sync.isOnline
                     ? const Color(0xFFECFDF5)
@@ -102,28 +105,30 @@ class ERPHeader extends StatelessWidget {
                           : const Color(0xFFEF4444),
                     ),
                   ),
-                  const SizedBox(width: 5),
-                  Text(
-                    sync.isOnline ? 'Connected' : 'Disconnected',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: sync.isOnline
-                          ? const Color(0xFF059669)
-                          : const Color(0xFFDC2626),
+                  if (!isMobile) ...[
+                    const SizedBox(width: 5),
+                    Text(
+                      sync.isOnline ? 'Connected' : 'Disconnected',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: sync.isOnline
+                            ? const Color(0xFF059669)
+                            : const Color(0xFFDC2626),
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
           // Firm Switcher Pill
           InkWell(
             onTap: () => CompanyState().toggleCompany(),
             borderRadius: BorderRadius.circular(8),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              padding: EdgeInsets.symmetric(horizontal: isMobile ? 6 : 8, vertical: 4),
               decoration: BoxDecoration(
                 color: isRanbir
                     ? const Color(0xFFECFDF5)
@@ -153,18 +158,20 @@ class ERPHeader extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 6),
-                  Text(
-                    company.name,
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
-                      color: isRanbir
-                          ? const Color(0xFF047857)
-                          : const Color(0xFF1D4ED8),
+                  if (!isMobile) ...[
+                    const SizedBox(width: 6),
+                    Text(
+                      company.name,
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                        color: isRanbir
+                            ? const Color(0xFF047857)
+                            : const Color(0xFF1D4ED8),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 4),
+                  ],
+                  const SizedBox(width: 3),
                   Icon(
                     Icons.swap_horiz,
                     size: 13,
@@ -177,7 +184,7 @@ class ERPHeader extends StatelessWidget {
             ),
           ),
           if (actions != null) ...[
-            const SizedBox(width: 8),
+            const SizedBox(width: 6),
             actions!,
           ],
         ],

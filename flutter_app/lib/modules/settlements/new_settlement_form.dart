@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
 import '../../core/api/api_client.dart';
 import '../../shared/components/slip_image_picker.dart';
+import '../../shared/components/searchable_dropdown.dart';
 import 'settlement_summary_sidebar.dart';
 
 class NewSettlementFormView extends StatefulWidget {
+  final Map<String, dynamic>? initialParams;
   final VoidCallback onSaved;
-  const NewSettlementFormView({super.key, required this.onSaved});
+
+  const NewSettlementFormView({
+    super.key,
+    this.initialParams,
+    required this.onSaved,
+  });
 
   @override
   State<NewSettlementFormView> createState() => _NewSettlementFormViewState();
@@ -37,6 +44,15 @@ class _NewSettlementFormViewState extends State<NewSettlementFormView> {
       if (mounted && res.data is List) {
         setState(() {
           _trips = List<Map<String, dynamic>>.from(res.data);
+          if (widget.initialParams != null && widget.initialParams!['tripId'] != null) {
+            final tId = widget.initialParams!['tripId'].toString();
+            _selectedTripId = tId;
+            _selectedTrip = _trips.firstWhere((t) => t['id']?.toString() == tId, orElse: () => {});
+            if (_selectedTrip != null) {
+              final d = _selectedTrip!['total_diesel'] ?? 0;
+              if (d > 0) _dieselCtrl.text = d.toString();
+            }
+          }
         });
       }
     } catch (_) {}
@@ -138,23 +154,28 @@ class _NewSettlementFormViewState extends State<NewSettlementFormView> {
               children: [
                 const Text('Trip Selection & Deductions', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                 const Divider(height: 20),
-                DropdownButtonFormField<String>(
+                SearchableDropdown(
                   value: _selectedTripId,
-                  isExpanded: true,
-                  decoration: const InputDecoration(labelText: 'Select Trip to Settle *'),
+                  label: 'Trip to Settle',
+                  hint: '-- Type trip # or truck plate to search --',
                   items: _trips.map((t) {
                     final no = t['trip_no'] ?? t['tripNo'] ?? '-';
                     final truck = t['truck_no'] ?? t['truckNo'] ?? '-';
                     final gross = t['gross_freight'] ?? t['grossFreight'] ?? 0;
-                    return DropdownMenuItem(
-                      value: t['id']?.toString(),
-                      child: Text('Trip #$no | Truck: $truck | Gross: ₹$gross', overflow: TextOverflow.ellipsis),
+                    return DropdownSearchItem(
+                      id: t['id']?.toString() ?? '',
+                      label: 'Trip #$no | Truck: $truck',
+                      subtitle: 'Gross Freight: ₹$gross',
                     );
                   }).toList(),
                   onChanged: (v) {
                     setState(() {
                       _selectedTripId = v;
-                      _selectedTrip = _trips.firstWhere((t) => t['id']?.toString() == v);
+                      _selectedTrip = v != null ? _trips.firstWhere((t) => t['id']?.toString() == v, orElse: () => {}) : null;
+                      if (_selectedTrip != null) {
+                        final d = _selectedTrip!['total_diesel'] ?? 0;
+                        if (d > 0) _dieselCtrl.text = d.toString();
+                      }
                     });
                   },
                 ),
@@ -176,7 +197,8 @@ class _NewSettlementFormViewState extends State<NewSettlementFormView> {
                 ),
                 const SizedBox(height: 16),
                 SlipImagePicker(
-                  label: 'Attach Signed Settlement Voucher / Payment Slip',
+                  label: 'Attach Settlement Voucher / Slip (Photo)',
+                  initialBase64: _slipImage,
                   onImageSelected: (b64) => setState(() => _slipImage = b64),
                 ),
               ],

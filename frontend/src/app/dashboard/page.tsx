@@ -8,6 +8,7 @@ import { Badge } from '../../components/ui/Badge';
 import { apiFetch, formatCurrency, formatDate } from '../../lib/api';
 import { DashboardKpis, Dispatch, Trip, Payment } from '../../types';
 import { useCompany } from '../../context/CompanyContext';
+import { useAuth } from '../../context/AuthContext';
 import {
   Truck,
   Send,
@@ -21,6 +22,17 @@ import Link from 'next/link';
 
 export default function DashboardPage() {
   const { activeCompany } = useCompany();
+  const { user } = useAuth();
+  const isManager = (user?.role as string) === 'MANAGER';
+  const [accessStatus, setAccessStatus] = useState<{ locked: boolean; accessStart?: string; accessEnd?: string }>({ locked: false });
+  const [unlockRequested, setUnlockRequested] = useState(false);
+
+  useEffect(() => {
+    if (!isManager) return;
+    apiFetch<{ locked: boolean; accessStart?: string; accessEnd?: string }>('/auth/access-status')
+      .then((res) => { if (res && typeof res.locked === 'boolean') setAccessStatus(res); })
+      .catch(() => {});
+  }, [isManager]);
   const [kpis, setKpis] = useState<DashboardKpis>({
     totalRegisteredTrucks: 0,
     totalDispatches: 0,
@@ -80,6 +92,38 @@ export default function DashboardPage() {
     { key: 'grossFreight', header: 'Gross Freight', render: (row) => formatCurrency(Number(row.grossFreight || (row as any).gross_freight)) },
   ];
 
+  if (isManager && accessStatus.locked) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-6">
+        <div className="max-w-md w-full bg-white rounded-2xl border border-slate-200 p-8 text-center space-y-4 shadow-sm">
+          <div className="w-14 h-14 mx-auto rounded-full bg-amber-100 text-amber-700 flex items-center justify-center">
+            <AlertCircle size={28} />
+          </div>
+          <h1 className="text-xl font-bold text-slate-900">Dashboard Locked</h1>
+          <p className="text-sm text-slate-600">
+            Manager access is restricted to office hours ({accessStatus.accessStart || '09:00'} – {accessStatus.accessEnd || '19:00'}).
+          </p>
+          {unlockRequested ? (
+            <p className="text-xs font-semibold text-emerald-600">
+              Unlock request sent to Admin! Please wait for approval.
+            </p>
+          ) : (
+            <button
+              type="button"
+              onClick={async () => {
+                await apiFetch('/auth/request-access', { method: 'POST', body: JSON.stringify({ reason: 'Outside office hours' }) });
+                setUnlockRequested(true);
+              }}
+              className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold"
+            >
+              Request Admin Unlock
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="pb-12">
       <Header
@@ -124,41 +168,45 @@ export default function DashboardPage() {
             icon={<Navigation size={18} />}
             color="purple"
           />
-          <StatCard
-            title="Pending Settlements"
-            value={kpis.pendingSettlements}
-            icon={<AlertCircle size={18} />}
-            color={kpis.pendingSettlements > 0 ? 'amber' : 'green'}
-          />
+          {!isManager && (
+            <StatCard
+              title="Pending Settlements"
+              value={kpis.pendingSettlements}
+              icon={<AlertCircle size={18} />}
+              color={kpis.pendingSettlements > 0 ? 'amber' : 'green'}
+            />
+          )}
         </div>
 
         {/* Financial KPI Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard
-            title="Total Gross Freight"
-            value={formatCurrency(kpis.totalGrossFreight)}
-            subtitle="Billable freight generated"
-            color="blue"
-          />
-          <StatCard
-            title="Diesel Deductions"
-            value={formatCurrency(kpis.totalDieselAmount)}
-            subtitle="Fuel provided from pumps"
-            color="amber"
-          />
-          <StatCard
-            title="Payments Disbursed"
-            value={formatCurrency(kpis.totalPaymentsMade)}
-            subtitle="Freight paid out to trucks"
-            color="green"
-          />
-          <StatCard
-            title="Net Outstanding"
-            value={formatCurrency(kpis.totalOutstanding)}
-            subtitle="Payables pending balance"
-            color="red"
-          />
-        </div>
+        {!isManager && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <StatCard
+              title="Total Gross Freight"
+              value={formatCurrency(kpis.totalGrossFreight)}
+              subtitle="Billable freight generated"
+              color="blue"
+            />
+            <StatCard
+              title="Diesel Deductions"
+              value={formatCurrency(kpis.totalDieselAmount)}
+              subtitle="Fuel provided from pumps"
+              color="amber"
+            />
+            <StatCard
+              title="Payments Disbursed"
+              value={formatCurrency(kpis.totalPaymentsMade)}
+              subtitle="Freight paid out to trucks"
+              color="green"
+            />
+            <StatCard
+              title="Net Outstanding"
+              value={formatCurrency(kpis.totalOutstanding)}
+              subtitle="Payables pending balance"
+              color="red"
+            />
+          </div>
+        )}
 
         {/* Recent Data Tables */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

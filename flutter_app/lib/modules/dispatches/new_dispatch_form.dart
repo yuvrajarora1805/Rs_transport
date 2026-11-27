@@ -68,7 +68,14 @@ class _NewDispatchFormViewState extends State<NewDispatchFormView> {
     return _multiTruckRows.fold(0, (sum, r) => sum + (int.tryParse(r['bales']?.toString() ?? '') ?? 0));
   }
 
-  Map<String, dynamic>? get _curTruck => _trucks.cast<Map<String, dynamic>?>().firstWhere((t) => t?['id']?.toString() == _selectedTruckId, orElse: () => null);
+  Map<String, dynamic>? get _curTruck {
+    if (_selectedTruckId == null || _selectedTruckId!.isEmpty) return null;
+    final valStr = _selectedTruckId!.trim().toLowerCase();
+    return _trucks.cast<Map<String, dynamic>?>().firstWhere(
+      (t) => t?['id']?.toString() == _selectedTruckId || (t?['truck_no'] ?? t?['truckNo'] ?? '').toString().toLowerCase() == valStr,
+      orElse: () => null,
+    );
+  }
   Map<String, dynamic>? get _curSource => _sources.cast<Map<String, dynamic>?>().firstWhere((s) => s?['id']?.toString() == _selectedSourceId, orElse: () => null);
   Map<String, dynamic>? get _curDest => _destinations.cast<Map<String, dynamic>?>().firstWhere((d) => d?['id']?.toString() == _selectedDestId, orElse: () => null);
 

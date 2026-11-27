@@ -18,6 +18,7 @@ import { OutstandingModule } from './outstanding/outstanding.module';
 import { ImportsModule } from './imports/imports.module';
 import { DashboardModule } from './dashboard/dashboard.module';
 import { SyncModule } from './sync/sync.module';
+import { ActivityModule } from './activity/activity.module';
 
 @Module({
   imports: [
@@ -40,6 +41,7 @@ import { SyncModule } from './sync/sync.module';
     ImportsModule,
     DashboardModule,
     SyncModule,
+    ActivityModule,
   ],
 })
 export class AppModule {}

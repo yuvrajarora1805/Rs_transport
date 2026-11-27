@@ -9,7 +9,7 @@ import { useMobileNav } from '../../context/MobileNavContext';
 import {
   LayoutDashboard, Truck, Send, Navigation, Fuel, CreditCard,
   FileCheck2, Receipt, FileText, Settings, Database, Building2,
-  MapPin, Users, Briefcase, LogOut, ArrowLeftRight, X,
+  MapPin, Users, Briefcase, LogOut, ArrowLeftRight, X, ShieldCheck,
 } from 'lucide-react';
 
 interface NavItem { name: string; href: string; icon: React.ReactNode; }
@@ -47,6 +47,7 @@ const navSections: { title: string; items: NavItem[] }[] = [
   {
     title: 'SYSTEM',
     items: [
+      { name: 'Approvals & Activity', href: '/approvals', icon: <ShieldCheck size={19} /> },
       { name: 'Excel Migration', href: '/migration', icon: <Database size={19} /> },
       { name: 'Settings', href: '/settings', icon: <Settings size={19} /> },
     ],
@@ -123,7 +124,16 @@ export const Sidebar: React.FC = () => {
         </div>
 
         <nav className="flex-1 overflow-y-auto px-3.5 py-4 space-y-5 [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-          {navSections.map((sec) => (
+          {navSections
+            .map((sec) => {
+              if (mounted && (user?.role as string) === 'MANAGER') {
+                const allowed = ['/dashboard', '/dispatches', '/trips', '/masters/trucks', '/masters/sources'];
+                return { ...sec, items: sec.items.filter((i) => allowed.includes(i.href)) };
+              }
+              return sec;
+            })
+            .filter((sec) => sec.items.length > 0)
+            .map((sec) => (
             <div key={sec.title}>
               <p className={`px-3 text-[11px] font-bold uppercase tracking-wider mb-2 transition-colors ${
                 isRanbir ? 'text-emerald-400' : 'text-blue-300'

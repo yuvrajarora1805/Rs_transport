@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import '../../core/api/api_client.dart';
 import '../../shared/components/slip_image_picker.dart';
+import '../../shared/components/searchable_dropdown.dart';
 import 'trip_freight_sidebar.dart';
 
 class NewTripFormView extends StatefulWidget {
+  final Map<String, dynamic>? initialParams;
   final VoidCallback onSaved;
-  const NewTripFormView({super.key, required this.onSaved});
+  const NewTripFormView({super.key, this.initialParams, required this.onSaved});
 
   @override
   State<NewTripFormView> createState() => _NewTripFormViewState();
@@ -15,8 +17,9 @@ class _NewTripFormViewState extends State<NewTripFormView> {
   final bool _isMultiMode = false;
   bool _isSubmitting = false;
   String? _error;
+  String? _dispatchId;
 
-  final _tripNoCtrl = TextEditingController();
+  late final TextEditingController _tripNoCtrl;
   final _dateCtrl = TextEditingController(text: DateTime.now().toIso8601String().split('T')[0]);
   final _grossCtrl = TextEditingController();
   final _tareCtrl = TextEditingController();
@@ -37,6 +40,10 @@ class _NewTripFormViewState extends State<NewTripFormView> {
   @override
   void initState() {
     super.initState();
+    final p = widget.initialParams;
+    _tripNoCtrl = TextEditingController(text: p?['srNo']?.toString() ?? '');
+    _dispatchId = p?['dispatchId']?.toString();
+    _selectedTruckId = p?['truckId']?.toString();
     _loadMasters();
   }
 
@@ -49,11 +56,23 @@ class _NewTripFormViewState extends State<NewTripFormView> {
       if (mounted) {
         setState(() {
           if (t.data is List) _trucks = List<Map<String, dynamic>>.from(t.data);
-          if (d.data is List) _destinations = List<Map<String, dynamic>>.from(d.data);
+          if (d.data is List) {
+            _destinations = List<Map<String, dynamic>>.from(d.data);
+            final destName = widget.initialParams?['destination']?.toString().toLowerCase().trim();
+            if (destName != null && destName.isNotEmpty) {
+              final match = _destinations.firstWhere(
+                (item) => (item['name'] ?? '').toString().toLowerCase().trim() == destName,
+                orElse: () => {},
+              );
+              if (match.isNotEmpty) _selectedDestId = match['id']?.toString();
+            }
+          }
           if (p.data is List) _parties = List<Map<String, dynamic>>.from(p.data);
           if (tr.data is List) {
             _transporters = List<Map<String, dynamic>>.from(tr.data);
-            if (_transporters.isNotEmpty) _selectedTransporterId = _transporters[0]['id']?.toString();
+            if (_transporters.isNotEmpty && _selectedTransporterId == null) {
+              _selectedTransporterId = _transporters[0]['id']?.toString();
+            }
           }
         });
       }
@@ -77,15 +96,23 @@ class _NewTripFormViewState extends State<NewTripFormView> {
     setState(() { _isSubmitting = true; _error = null; });
     try {
       await ApiClient().post('/trips', data: {
-        'tripNo': _tripNoCtrl.text, 'unloadingDate': _dateCtrl.text, 'truckId': _selectedTruckId,
-        'destinationId': _selectedDestId, 'partyId': _selectedPartyId, 'transporterId': _selectedTransporterId,
-        'grossWeight': double.tryParse(_grossCtrl.text) ?? 0, 'tareWeight': double.tryParse(_tareCtrl.text) ?? 0,
-        'netWeight': double.tryParse(_netCtrl.text) ?? 0, 'ratePerUnit': double.tryParse(_rateCtrl.text) ?? 0,
-        'grossFreight': _grossFreight, 'slip_image': _slipImage,
+        'tripNo': _tripNoCtrl.text,
+        'dispatchId': _dispatchId,
+        'unloadingDate': _dateCtrl.text,
+        'truckId': _selectedTruckId,
+        'destinationId': _selectedDestId,
+        'partyId': _selectedPartyId,
+        'transporterId': _selectedTransporterId,
+        'grossWeight': double.tryParse(_grossCtrl.text) ?? 0,
+        'tareWeight': double.tryParse(_tareCtrl.text) ?? 0,
+        'netWeight': double.tryParse(_netCtrl.text) ?? 0,
+        'ratePerUnit': double.tryParse(_rateCtrl.text) ?? 0,
+        'grossFreight': _grossFreight,
+        'slip_image': _slipImage,
       });
       widget.onSaved();
     } catch (e) {
-      setState(() => _error = 'Failed to save trip: $e');
+      setState(() => _error = 'Failed to record trip: $e');
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
@@ -95,8 +122,8 @@ class _NewTripFormViewState extends State<NewTripFormView> {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final isWide = constraints.maxWidth >= 980;
-        final formContent = _buildForm();
+        final isWide = constraints.maxWidth >= 900;
+        final formContent = _buildForm(constraints.maxWidth < 600);
         final sidebarContent = SizedBox(
           width: isWide ? 340 : double.infinity,
           child: TripFreightSidebar(
@@ -111,36 +138,26 @@ class _NewTripFormViewState extends State<NewTripFormView> {
         );
 
         return SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.all(isWide ? 20 : 12),
           child: isWide
               ? Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(child: formContent),
-                    const SizedBox(width: 20),
-                    sidebarContent,
-                  ],
+                  children: [Expanded(child: formContent), const SizedBox(width: 20), sidebarContent],
                 )
-              : Column(
-                  children: [
-                    formContent,
-                    const SizedBox(height: 20),
-                    sidebarContent,
-                  ],
-                ),
+              : Column(children: [formContent, const SizedBox(height: 16), sidebarContent]),
         );
       },
     );
   }
 
-  Widget _buildForm() {
+  Widget _buildForm(bool isMobile) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         if (_error != null)
           Container(
-            margin: const EdgeInsets.only(bottom: 16),
-            padding: const EdgeInsets.all(12),
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(color: const Color(0xFFFFF1F2), borderRadius: BorderRadius.circular(8)),
             child: Text(_error!, style: const TextStyle(color: Color(0xFFE11D48), fontSize: 12)),
           ),
@@ -148,99 +165,86 @@ class _NewTripFormViewState extends State<NewTripFormView> {
           elevation: 0,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Color(0xFFE2E8F0))),
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.all(isMobile ? 14 : 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text('Trip Unloading Setup', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                 const Divider(height: 20),
-                Row(
-                  children: [
+                if (isMobile) ...[
+                  TextField(controller: _tripNoCtrl, decoration: const InputDecoration(labelText: 'Trip # / SR Reference', hintText: 'e.g. TR-1001')),
+                  const SizedBox(height: 12),
+                  TextField(controller: _dateCtrl, decoration: const InputDecoration(labelText: 'Unloading Date *', suffixIcon: Icon(Icons.calendar_today, size: 16))),
+                  const SizedBox(height: 12),
+                  _buildDropdown('Destination Place *', _selectedDestId, _destinations, (v) => setState(() => _selectedDestId = v)),
+                  const SizedBox(height: 12),
+                  _buildDropdown('Party / Consignee *', _selectedPartyId, _parties, (v) => setState(() => _selectedPartyId = v)),
+                ] else ...[
+                  Row(children: [
                     Expanded(child: TextField(controller: _tripNoCtrl, decoration: const InputDecoration(labelText: 'Trip # / SR Reference', hintText: 'e.g. TR-1001'))),
                     const SizedBox(width: 16),
                     Expanded(child: TextField(controller: _dateCtrl, decoration: const InputDecoration(labelText: 'Unloading Date *', suffixIcon: Icon(Icons.calendar_today, size: 16)))),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: _selectedDestId,
-                        isExpanded: true,
-                        decoration: const InputDecoration(labelText: 'Destination Place *'),
-                        items: _destinations.map((d) => DropdownMenuItem(value: d['id']?.toString(), child: Text(d['name'] ?? '', overflow: TextOverflow.ellipsis))).toList(),
-                        onChanged: (v) => setState(() => _selectedDestId = v),
-                      ),
-                    ),
+                  ]),
+                  const SizedBox(height: 16),
+                  Row(children: [
+                    Expanded(child: _buildDropdown('Destination Place *', _selectedDestId, _destinations, (v) => setState(() => _selectedDestId = v))),
                     const SizedBox(width: 16),
-                    Expanded(
-                      child: DropdownButtonFormField<String>(
-                        value: _selectedPartyId,
-                        isExpanded: true,
-                        decoration: const InputDecoration(labelText: 'Party / Mill Consignee *'),
-                        items: _parties.map((p) => DropdownMenuItem(value: p['id']?.toString(), child: Text(p['name'] ?? '', overflow: TextOverflow.ellipsis))).toList(),
-                        onChanged: (v) => setState(() => _selectedPartyId = v),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  value: _selectedTransporterId,
-                  isExpanded: true,
-                  decoration: const InputDecoration(labelText: 'Unloaded on Transporter'),
-                  items: _transporters.map((t) => DropdownMenuItem(value: t['id']?.toString(), child: Text(t['name'] ?? '', overflow: TextOverflow.ellipsis))).toList(),
-                  onChanged: (v) => setState(() => _selectedTransporterId = v),
-                ),
+                    Expanded(child: _buildDropdown('Party / Consignee *', _selectedPartyId, _parties, (v) => setState(() => _selectedPartyId = v))),
+                  ]),
+                ],
+                const SizedBox(height: 12),
+                _buildDropdown('Unloaded on Transporter', _selectedTransporterId, _transporters, (v) => setState(() => _selectedTransporterId = v)),
               ],
             ),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
         Card(
           elevation: 0,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: Color(0xFFE2E8F0))),
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.all(isMobile ? 14 : 20),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text('Weighbridge & Freight Calculation', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
                 const Divider(height: 20),
-                DropdownButtonFormField<String>(
+                SearchableDropdown(
                   value: _selectedTruckId,
-                  isExpanded: true,
-                  decoration: const InputDecoration(labelText: 'Select Truck *'),
-                  items: _trucks.map((t) => DropdownMenuItem(value: t['id']?.toString(), child: Text('${t['truck_no'] ?? t['truckNo']} - ${t['owner_name'] ?? t['ownerName']}', overflow: TextOverflow.ellipsis))).toList(),
+                  label: 'Truck',
+                  hint: '-- Type truck plate or owner --',
+                  items: _trucks.map((t) => DropdownSearchItem(id: t['id']?.toString() ?? '', label: '${t['truck_no'] ?? t['truckNo']}', subtitle: '${t['owner_name'] ?? t['ownerName'] ?? ''}')).toList(),
                   onChanged: (v) => setState(() => _selectedTruckId = v),
                 ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(child: TextField(controller: _grossCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Gross Wt (MT)'), onChanged: (_) => _calculateNet())),
-                    const SizedBox(width: 12),
-                    Expanded(child: TextField(controller: _tareCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Tare Wt (MT)'), onChanged: (_) => _calculateNet())),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(child: TextField(controller: _netCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Net Wt (MT)'), onChanged: (_) => setState(() {}))),
-                    const SizedBox(width: 12),
-                    Expanded(child: TextField(controller: _rateCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Rate / MT (₹)'), onChanged: (_) => setState(() {}))),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                SlipImagePicker(
-                  label: 'Attach Dharamkanta / Unloading Scale Slip',
-                  onImageSelected: (b64) => setState(() => _slipImage = b64),
-                ),
+                const SizedBox(height: 12),
+                Row(children: [
+                  Expanded(child: TextField(controller: _grossCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Gross (MT)'), onChanged: (_) => _calculateNet())),
+                  const SizedBox(width: 10),
+                  Expanded(child: TextField(controller: _tareCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Tare (MT)'), onChanged: (_) => _calculateNet())),
+                ]),
+                const SizedBox(height: 12),
+                Row(children: [
+                  Expanded(child: TextField(controller: _netCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Net (MT)'), onChanged: (_) => setState(() {}))),
+                  const SizedBox(width: 10),
+                  Expanded(child: TextField(controller: _rateCtrl, keyboardType: TextInputType.number, decoration: const InputDecoration(labelText: 'Rate / MT (₹)'), onChanged: (_) => setState(() {}))),
+                ]),
+                const SizedBox(height: 14),
+                SlipImagePicker(label: 'Attach Scale Slip', onImageSelected: (b64) => setState(() => _slipImage = b64)),
               ],
             ),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildDropdown(String label, String? val, List<Map<String, dynamic>> items, ValueChanged<String?> onChanged) {
+    return SearchableDropdown(
+      value: val,
+      label: label.replaceAll(' *', ''),
+      hint: '-- Type to search $label --',
+      items: items.map((it) => DropdownSearchItem(id: it['id']?.toString() ?? '', label: it['name'] ?? '', subtitle: it['code'])).toList(),
+      onChanged: onChanged,
     );
   }
 }

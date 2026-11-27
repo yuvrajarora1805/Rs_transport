@@ -94,6 +94,42 @@ export class DbService implements OnModuleInit, OnModuleDestroy {
       'ALTER TABLE settlements ADD COLUMN slip_image LONGTEXT NULL',
       'ALTER TABLE fuel_transactions MODIFY COLUMN pump_id VARCHAR(36) NULL',
       'ALTER TABLE fuel_transactions ADD COLUMN slip_image LONGTEXT NULL',
+      "ALTER TABLE dispatches ADD COLUMN approval_status VARCHAR(20) NOT NULL DEFAULT 'APPROVED'",
+      'ALTER TABLE dispatches ADD COLUMN created_by VARCHAR(36) NULL',
+      'ALTER TABLE dispatches ADD COLUMN approved_by VARCHAR(36) NULL',
+      'ALTER TABLE dispatches ADD COLUMN approved_at DATETIME NULL',
+      'ALTER TABLE dispatches ADD COLUMN rejection_reason VARCHAR(255) NULL',
+      "ALTER TABLE trips ADD COLUMN approval_status VARCHAR(20) NOT NULL DEFAULT 'APPROVED'",
+      'ALTER TABLE trips ADD COLUMN created_by VARCHAR(36) NULL',
+      'ALTER TABLE trips ADD COLUMN approved_by VARCHAR(36) NULL',
+      'ALTER TABLE trips ADD COLUMN approved_at DATETIME NULL',
+      'ALTER TABLE trips ADD COLUMN rejection_reason VARCHAR(255) NULL',
+      "ALTER TABLE sources ADD COLUMN approval_status VARCHAR(20) NOT NULL DEFAULT 'APPROVED'",
+      'ALTER TABLE sources ADD COLUMN created_by VARCHAR(36) NULL',
+      'ALTER TABLE sources ADD COLUMN approved_by VARCHAR(36) NULL',
+      'ALTER TABLE sources ADD COLUMN approved_at DATETIME NULL',
+      'ALTER TABLE sources ADD COLUMN rejection_reason VARCHAR(255) NULL',
+      `CREATE TABLE IF NOT EXISTS manager_activity_logs (
+        id VARCHAR(36) PRIMARY KEY,
+        user_id VARCHAR(36) NOT NULL,
+        username VARCHAR(100) NOT NULL,
+        action VARCHAR(30) NOT NULL,
+        module VARCHAR(50) NOT NULL,
+        record_id VARCHAR(36) NULL,
+        details TEXT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )`,
+      "ALTER TABLE users ADD COLUMN access_start VARCHAR(5) NOT NULL DEFAULT '09:00'",
+      "ALTER TABLE users ADD COLUMN access_end VARCHAR(5) NOT NULL DEFAULT '19:00'",
+      'ALTER TABLE users ADD COLUMN temp_unlocked_until DATETIME NULL',
+      `CREATE TABLE IF NOT EXISTS access_requests (
+        id VARCHAR(36) PRIMARY KEY,
+        user_id VARCHAR(36) NOT NULL,
+        username VARCHAR(100) NOT NULL,
+        reason VARCHAR(255) NULL,
+        status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )`,
     ];
 
     for (const sql of migrations) {
