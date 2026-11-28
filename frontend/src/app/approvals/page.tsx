@@ -404,7 +404,7 @@ export default function ApprovalsPage() {
               onClick={async () => {
                 setMailStatus('Sending...');
                 try {
-                  await apiFetch('/alerts/send-eod-email', { method: 'POST', body: JSON.stringify({ to: 'yuvrajarora1805@gmail.com' }) });
+                  await apiFetch('/alerts/send-eod-email', { method: 'POST', body: JSON.stringify({}) });
                   setMailStatus('EOD Summary & Alerts email sent!');
                 } catch (e: any) {
                   setMailStatus(e?.message || 'Failed to send email');
