@@ -87,7 +87,14 @@ export default function TripsPage() {
             {dieselAmt > 0 ? (
               <span className="font-semibold text-rose-600">
                 {formatCurrency(dieselAmt)}
-                {fuelCount > 1 && <span className="text-[10px] text-slate-500 font-normal ml-1">({fuelCount} slips)</span>}
+                {fuelCount >= 1 && (
+                  <Link
+                    href={`/fuel?search=${encodeURIComponent(row.truck_no || '')}`}
+                    className="text-[10px] text-blue-600 hover:underline font-medium ml-1"
+                  >
+                    ({fuelCount} {fuelCount === 1 ? 'slip' : 'slips'})
+                  </Link>
+                )}
               </span>
             ) : (
               <span className="text-xs text-slate-400">None</span>
