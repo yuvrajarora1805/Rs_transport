@@ -104,9 +104,13 @@ export class ActivityService {
         SELECT f.id, f.date, f.amount, f.litres, t.truck_no
         FROM fuel_transactions f
         JOIN trucks t ON f.truck_id = t.id
-        WHERE NOT EXISTS (
-          SELECT 1 FROM dispatches d WHERE d.truck_id = f.truck_id AND d.is_cancelled = false
-        )
+        WHERE f.trip_id IS NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM dispatches d
+            WHERE d.truck_id = f.truck_id
+              AND d.is_cancelled = false
+              AND ABS(DATEDIFF(DATE(d.date), DATE(f.date))) <= 2
+          )
         ORDER BY f.date DESC LIMIT 50
       `),
       this.db.query(`
