@@ -4,6 +4,7 @@ import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { ActivityService } from './activity.service';
 import { MailService } from './mail.service';
+import { WhatsappService } from './whatsapp.service';
 
 @Controller()
 @UseGuards(AuthGuard('jwt'), RolesGuard)
@@ -11,6 +12,7 @@ export class ActivityController {
   constructor(
     private readonly activityService: ActivityService,
     private readonly mailService: MailService,
+    private readonly whatsappService: WhatsappService,
   ) {}
 
   @Get('activity-logs')
@@ -75,6 +77,24 @@ export class ActivityController {
   @Roles('SUPER_ADMIN', 'ADMIN')
   removeNotificationEmail(@Param('id') id: string) {
     return this.activityService.removeNotificationEmail(id);
+  }
+
+  @Get('alerts/whatsapp')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  getWhatsappPhones() {
+    return this.whatsappService.getPhones();
+  }
+
+  @Post('alerts/whatsapp')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  addWhatsappPhone(@Body('phone') phone: string) {
+    return this.whatsappService.addPhone(phone);
+  }
+
+  @Delete('alerts/whatsapp/:id')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  removeWhatsappPhone(@Param('id') id: string) {
+    return this.whatsappService.removePhone(id);
   }
 }
 

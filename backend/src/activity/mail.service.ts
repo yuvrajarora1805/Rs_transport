@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import { ActivityService } from './activity.service';
+import { WhatsappService } from './whatsapp.service';
 import { DbService } from '../db/db.service';
 
 @Injectable()
@@ -10,6 +11,7 @@ export class MailService implements OnModuleInit {
 
   constructor(
     private readonly activityService: ActivityService,
+    private readonly whatsappService: WhatsappService,
     private readonly db: DbService,
   ) {}
 
@@ -192,6 +194,9 @@ export class MailService implements OnModuleInit {
         attachments,
       });
       this.logger.log(`Dispatch email sent to ${to}: ${info.messageId}`);
+      this.whatsappService.sendText(
+        `🚛 *New Dispatch Created*\nTruck: ${dispatch.truck_no || '-'}\nSource: ${dispatch.source_name || '-'}\nDestination: ${dispatch.destination || '-'}\nSR No: ${dispatch.sr_no || '-'}\nBales: ${dispatch.bales || 0} (${dispatch.material || 'Cotton Bales'})`,
+      );
     } catch (err: any) {
       this.logger.warn(`Dispatch email failed: ${err.message}`);
     }

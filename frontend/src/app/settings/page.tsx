@@ -3,6 +3,7 @@
 import React from 'react';
 import { Header } from '../../components/layout/Header';
 import { NotificationEmailsCard } from '../../components/settings/NotificationEmailsCard';
+import { NotificationWhatsappCard } from '../../components/settings/NotificationWhatsappCard';
 
 export default function SettingsPage() {
   return (
@@ -13,6 +14,7 @@ export default function SettingsPage() {
       />
       <div className="p-6 max-w-4xl">
         <NotificationEmailsCard />
+        <NotificationWhatsappCard />
       </div>
     </div>
   );
