@@ -107,4 +107,38 @@ export class DashboardService {
       recentPayments: payments.rows,
     };
   }
+
+  async getEodSummary(date?: string) {
+    const targetDate = date || new Date().toISOString().split('T')[0];
+    const [disp, trips, sett, pay] = await Promise.all([
+      this.db.query(
+        'SELECT COUNT(*) as total_dispatches, COUNT(DISTINCT truck_id) as total_trucks FROM dispatches WHERE is_cancelled = false AND DATE(date) = ?',
+        [targetDate],
+      ),
+      this.db.query(
+        'SELECT COUNT(*) as total_trips, COUNT(DISTINCT party_id) as parties_done FROM trips WHERE DATE(COALESCE(unloading_date, created_at)) = ?',
+        [targetDate],
+      ),
+      this.db.query(
+        "SELECT COUNT(CASE WHEN status = 'PAID' THEN 1 END) as settled_count, COUNT(CASE WHEN status != 'PAID' THEN 1 END) as pending_settlements, COALESCE(SUM(outstanding), 0) as pending_amount FROM settlements WHERE DATE(created_at) = ?",
+        [targetDate],
+      ),
+      this.db.query(
+        'SELECT COUNT(*) as payments_count, COALESCE(SUM(amount), 0) as payments_resolved FROM payments WHERE DATE(payment_date) = ?',
+        [targetDate],
+      ),
+    ]);
+
+    return {
+      date: targetDate,
+      totalDispatches: Number((disp.rows[0] as any)?.total_dispatches || 0),
+      totalTrucksDispatched: Number((disp.rows[0] as any)?.total_trucks || 0),
+      totalTrips: Number((trips.rows[0] as any)?.total_trips || 0),
+      partiesDone: Number((trips.rows[0] as any)?.parties_done || 0),
+      settlementsCompleted: Number((sett.rows[0] as any)?.settled_count || 0),
+      pendingSettlements: Number((sett.rows[0] as any)?.pending_settlements || 0),
+      pendingPayments: Number((sett.rows[0] as any)?.pending_amount || 0),
+      paymentsResolved: Number((pay.rows[0] as any)?.payments_resolved || 0),
+    };
+  }
 }

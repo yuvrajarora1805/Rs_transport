@@ -2,9 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { Plus, Check, X, Tag } from 'lucide-react';
+import { apiFetch } from '../../lib/api';
 
 const DEFAULT_PRODUCTS = ['Cotton Bales', 'Rice', 'Paddy', 'Wheat', 'Mustard', 'Barseem'];
-const STORAGE_KEY = 'rs_transport_custom_products';
 
 interface CommoditySelectProps {
   material: string;
@@ -17,13 +17,11 @@ export function CommoditySelect({ material, onMaterialChange }: CommoditySelectP
   const [newProductInput, setNewProductInput] = useState('');
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        if (Array.isArray(parsed)) setCustomList(parsed);
-      }
-    } catch {}
+    apiFetch<string[]>('/dispatches/products')
+      .then((list) => {
+        if (Array.isArray(list)) setCustomList(list);
+      })
+      .catch(() => {});
   }, []);
 
   const allProducts = Array.from(new Set([...DEFAULT_PRODUCTS, ...customList, ...(material ? [material] : [])]));
@@ -53,9 +51,10 @@ export function CommoditySelect({ material, onMaterialChange }: CommoditySelectP
     if (!DEFAULT_PRODUCTS.includes(formatted) && !customList.includes(formatted)) {
       const updated = [...customList, formatted];
       setCustomList(updated);
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-      } catch {}
+      apiFetch('/dispatches/products', {
+        method: 'POST',
+        body: JSON.stringify({ name: formatted }),
+      }).catch(() => {});
     }
 
     onMaterialChange(formatted);

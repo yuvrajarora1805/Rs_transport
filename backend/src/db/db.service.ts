@@ -130,6 +130,16 @@ export class DbService implements OnModuleInit, OnModuleDestroy {
         status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )`,
+      `CREATE TABLE IF NOT EXISTS custom_products (
+        id VARCHAR(36) PRIMARY KEY,
+        name VARCHAR(100) NOT NULL UNIQUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )`,
+      `CREATE TABLE IF NOT EXISTS notification_emails (
+        id VARCHAR(36) PRIMARY KEY,
+        email VARCHAR(150) NOT NULL UNIQUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )`,
     ];
 
     for (const sql of migrations) {

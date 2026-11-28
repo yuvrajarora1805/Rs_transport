@@ -68,7 +68,9 @@ export function SingleTruckSection({
             type="tel"
             placeholder="e.g. 9829012345 (Driver's mobile)"
             value={form.driverMobile}
-            onChange={(e) => onChange('driverMobile', e.target.value)}
+            maxLength={10}
+            placeholder="10-digit mobile (Optional)"
+            onChange={(e) => onChange('driverMobile', e.target.value.replace(/\D/g, '').slice(0, 10))}
             className="w-full h-11 px-4 text-base border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white"
           />
         </div>

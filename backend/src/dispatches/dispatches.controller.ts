@@ -26,6 +26,16 @@ export class DispatchesController {
     return this.dispatchesService.findAll(sourceId, truckId, companyCode, req?.user);
   }
 
+  @Get('products')
+  getCustomProducts() {
+    return this.dispatchesService.getCustomProducts();
+  }
+
+  @Post('products')
+  addCustomProduct(@Body('name') name: string) {
+    return this.dispatchesService.addCustomProduct(name);
+  }
+
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.dispatchesService.remove(id);

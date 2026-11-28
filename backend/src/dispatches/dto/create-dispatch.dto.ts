@@ -22,8 +22,8 @@ export class CreateDispatchDto {
   bales?: number;
 
   @IsString()
-  @IsOptional()
-  destination?: string;
+  @IsNotEmpty({ message: 'Destination is required' })
+  destination: string;
 
   @IsString()
   @IsOptional()

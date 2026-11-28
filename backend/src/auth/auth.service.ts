@@ -4,6 +4,7 @@ import * as bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 import { DbService } from '../db/db.service';
 import { ActivityService } from '../activity/activity.service';
+import { MailService } from '../activity/mail.service';
 import { UserRow } from '../db/db.types';
 import { LoginDto } from './dto/login.dto';
 
@@ -13,6 +14,7 @@ export class AuthService {
     private db: DbService,
     private jwtService: JwtService,
     private activityService: ActivityService,
+    private mailService: MailService,
   ) {}
 
   async validateUser(username: string, pass: string): Promise<any> {
@@ -123,6 +125,7 @@ export class AuthService {
       [id, user.id, user.username, reason || 'Outside office hours access request', 'PENDING'],
     );
     await this.activityService.logAction(user, 'ACCESS_REQUEST', 'auth', id, 'Requested outside-hours dashboard unlock');
+    this.mailService.sendUnlockRequestEmail(user.username, reason);
     return { success: true, id };
   }
 

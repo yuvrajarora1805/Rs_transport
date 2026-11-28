@@ -101,6 +101,7 @@ export function DispatchHeaderFields({
             </button>
           </div>
           <select
+            required
             value={destination}
             onChange={(e) => onDestChange(e.target.value)}
             className="w-full h-11 px-4 text-base border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white"

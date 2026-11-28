@@ -31,6 +31,7 @@
     "decimal.js": "^10.6.0",
     "exceljs": "^4.4.0",
     "mysql2": "^3.24.6",
+    "nodemailer": "^10.6.1",
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "passport-local": "^1.0.0",
@@ -43,6 +44,7 @@
     "@types/bcryptjs": "^2.4.6",
     "@types/express": "^5.0.6",
     "@types/node": "^26.6.6",
+    "@types/nodemailer": "^8.0.2",
     "@types/passport-jwt": "^4.0.1",
     "@types/passport-local": "^1.0.38",
     "@types/pdfkit": "^0.17.7",
@@ -50,6 +52,6 @@
     "rimraf": "^6.1.4",
     "ts-node": "^10.9.2",
     "tsx": "^4.23.15",
-    "typescript": "^5.7.3"
+    "typescript": "^5.9.3"
   }
 }

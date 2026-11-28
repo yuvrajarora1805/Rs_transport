@@ -16,5 +16,10 @@ export class DashboardController {
   getRecentActivity(@Query('companyCode') companyCode?: string, @Req() req?: any) {
     return this.dashboardService.getRecentActivity(companyCode, req?.user);
   }
+
+  @Get('eod-summary')
+  getEodSummary(@Query('date') date?: string) {
+    return this.dashboardService.getEodSummary(date);
+  }
 }
 

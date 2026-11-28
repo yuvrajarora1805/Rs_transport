@@ -31,18 +31,23 @@ export default function ApprovalsPage() {
   const [logs, setLogs] = useState<ActivityLog[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState<'approvals' | 'activity' | 'users'>('approvals');
+  const [tab, setTab] = useState<'approvals' | 'activity' | 'users' | 'alerts'>('approvals');
+  const [alerts, setAlerts] = useState<any>({ fuelWithoutDispatch: [], dispatchesWithoutFuel: [], pendingPumpSettlements: [] });
+  const [eod, setEod] = useState<any>(null);
+  const [mailStatus, setMailStatus] = useState('');
   const [newUser, setNewUser] = useState({ username: '', password: '', fullName: '', role: 'MANAGER' });
   const [userMsg, setUserMsg] = useState('');
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [pRes, lRes, uRes, aRes] = await Promise.allSettled([
+      const [pRes, lRes, uRes, aRes, alRes, eodRes] = await Promise.allSettled([
         apiFetch('/approvals/pending'),
         apiFetch('/activity-logs?limit=100'),
         apiFetch('/auth/users'),
         apiFetch('/auth/access-requests'),
+        apiFetch('/alerts'),
+        apiFetch('/dashboard/eod-summary'),
       ]);
       if (pRes.status === 'fulfilled') {
         const pAny = (pRes.value || {}) as any;
@@ -62,6 +67,12 @@ export default function ApprovalsPage() {
       }
       if (aRes.status === 'fulfilled') {
         setAccessRequests(Array.isArray(aRes.value) ? aRes.value : []);
+      }
+      if (alRes.status === 'fulfilled' && alRes.value) {
+        setAlerts(alRes.value);
+      }
+      if (eodRes.status === 'fulfilled' && eodRes.value) {
+        setEod(eodRes.value);
       }
     } catch (_) {
     } finally {
@@ -140,6 +151,14 @@ export default function ApprovalsPage() {
             }`}
           >
             Users ({users.length})
+          </button>
+          <button
+            onClick={() => setTab('alerts')}
+            className={`px-4 py-2 rounded-lg text-sm font-semibold ${
+              tab === 'alerts' ? 'bg-blue-600 text-white' : 'bg-white border border-slate-200 text-slate-700'
+            }`}
+          >
+            Alerts & 7PM EOD
           </button>
         </div>
       </div>
@@ -244,7 +263,7 @@ export default function ApprovalsPage() {
             </div>
           )}
         </div>
-      ) : (
+      ) : tab === 'users' ? (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <form onSubmit={handleCreateUser} className="bg-white p-5 rounded-xl border border-slate-200 space-y-4">
             <h2 className="font-bold text-slate-900 flex items-center gap-2">
@@ -368,6 +387,53 @@ export default function ApprovalsPage() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          <div className="bg-white rounded-xl border border-slate-200 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div>
+              <h2 className="font-bold text-slate-900 text-lg">7:00 PM Daily End-of-Day Summary</h2>
+              <p className="text-xs text-slate-500">
+                Dispatches: {eod?.totalDispatches ?? 0} • Trucks: {eod?.totalTrucksDispatched ?? 0} • Trips: {eod?.totalTrips ?? 0} • Parties Done: {eod?.partiesDone ?? 0} • Settled: {eod?.settlementsCompleted ?? 0} • Pending Settlements: {eod?.pendingSettlements ?? 0}
+              </p>
+              {mailStatus && <p className="text-xs font-semibold text-emerald-600 mt-1">{mailStatus}</p>}
+            </div>
+            <button
+              type="button"
+              onClick={async () => {
+                setMailStatus('Sending...');
+                try {
+                  await apiFetch('/alerts/send-eod-email', { method: 'POST', body: JSON.stringify({ to: 'yuvrajarora1805@gmail.com' }) });
+                  setMailStatus('EOD Summary & Alerts email sent!');
+                } catch (e: any) {
+                  setMailStatus(e?.message || 'Failed to send email');
+                }
+              }}
+              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg"
+            >
+              Send EOD Email Now
+            </button>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="bg-white rounded-xl border border-amber-200 p-4">
+              <h3 className="font-bold text-amber-900 text-sm mb-2">Dispatches Without Diesel ({alerts.dispatchesWithoutFuel?.length || 0})</h3>
+              {(alerts.dispatchesWithoutFuel || []).slice(0, 8).map((d: any) => (
+                <p key={d.id} className="text-xs text-slate-600 py-1 border-b border-slate-100">{d.truck_no} • {d.source_name}</p>
+              ))}
+            </div>
+            <div className="bg-white rounded-xl border border-rose-200 p-4">
+              <h3 className="font-bold text-rose-900 text-sm mb-2">Diesel Without Dispatch ({alerts.fuelWithoutDispatch?.length || 0})</h3>
+              {(alerts.fuelWithoutDispatch || []).slice(0, 8).map((f: any) => (
+                <p key={f.id} className="text-xs text-slate-600 py-1 border-b border-slate-100">{f.truck_no} • ₹{f.amount}</p>
+              ))}
+            </div>
+            <div className="bg-white rounded-xl border border-blue-200 p-4">
+              <h3 className="font-bold text-blue-900 text-sm mb-2">Pending Pump Settlements ({alerts.pendingPumpSettlements?.length || 0})</h3>
+              {(alerts.pendingPumpSettlements || []).slice(0, 8).map((p: any) => (
+                <p key={p.id} className="text-xs text-slate-600 py-1 border-b border-slate-100">{p.name} • ₹{p.balance}</p>
+              ))}
+            </div>
           </div>
         </div>
       )}

@@ -1,13 +1,17 @@
-import { Controller, Get, Post, Param, Body, Query, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Delete, Param, Body, Query, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { ActivityService } from './activity.service';
+import { MailService } from './mail.service';
 
 @Controller()
 @UseGuards(AuthGuard('jwt'), RolesGuard)
 export class ActivityController {
-  constructor(private readonly activityService: ActivityService) {}
+  constructor(
+    private readonly activityService: ActivityService,
+    private readonly mailService: MailService,
+  ) {}
 
   @Get('activity-logs')
   @Roles('SUPER_ADMIN', 'ADMIN')
@@ -41,6 +45,36 @@ export class ActivityController {
     @Req() req: any,
   ) {
     return this.activityService.rejectRecord(module, id, req.user, reason);
+  }
+
+  @Get('alerts')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  getAlerts() {
+    return this.activityService.getAlerts();
+  }
+
+  @Post('alerts/send-eod-email')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  sendEodEmail(@Body('to') to?: string) {
+    return this.mailService.sendEodEmail(to);
+  }
+
+  @Get('alerts/emails')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  getNotificationEmails() {
+    return this.activityService.getNotificationEmails();
+  }
+
+  @Post('alerts/emails')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  addNotificationEmail(@Body('email') email: string) {
+    return this.activityService.addNotificationEmail(email);
+  }
+
+  @Delete('alerts/emails/:id')
+  @Roles('SUPER_ADMIN', 'ADMIN')
+  removeNotificationEmail(@Param('id') id: string) {
+    return this.activityService.removeNotificationEmail(id);
   }
 }
 

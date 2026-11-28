@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { DbService } from '../db/db.service';
 import { ActivityService } from '../activity/activity.service';
+import { MailService } from '../activity/mail.service';
 import { CreateDispatchDto } from './dto/create-dispatch.dto';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -9,6 +10,7 @@ export class DispatchesService {
   constructor(
     private db: DbService,
     private activityService: ActivityService,
+    private mailService: MailService,
   ) {}
 
   private async checkDuplicateSrNo(srNo?: string, companyCode?: string) {
@@ -29,6 +31,7 @@ export class DispatchesService {
     await this.checkDuplicateSrNo(dto.srNo, dto.companyCode);
     const created = await this.insertSingleDispatch(dto, user);
     await this.activityService.logAction(user, 'CREATE', 'dispatches', created.id, `Created dispatch ${dto.srNo || ''}`);
+    if (created) this.mailService.sendDispatchNotification(created);
     return created;
   }
 
@@ -41,6 +44,9 @@ export class DispatchesService {
       results.push(await this.insertSingleDispatch(dto, user));
     }
     await this.activityService.logAction(user, 'CREATE', 'dispatches', results[0]?.id, `Created ${results.length} dispatches`);
+    for (const r of results) {
+      if (r) this.mailService.sendDispatchNotification(r);
+    }
     return results;
   }
 
@@ -159,6 +165,21 @@ export class DispatchesService {
       ...r,
       mobile_no: r.driver_mobile || r.truck_mobile_no,
     }));
+  }
+
+  async getCustomProducts() {
+    const res = await this.db.query('SELECT name FROM custom_products ORDER BY name ASC');
+    return res.rows.map((r: any) => r.name);
+  }
+
+  async addCustomProduct(name: string) {
+    const trimmed = (name || '').trim();
+    if (!trimmed) return { success: false };
+    await this.db.query(
+      'INSERT IGNORE INTO custom_products (id, name) VALUES (?, ?)',
+      [uuidv4(), trimmed],
+    );
+    return { success: true, name: trimmed };
   }
 
   async remove(id: string) {
