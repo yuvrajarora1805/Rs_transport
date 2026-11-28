@@ -127,7 +127,7 @@ export const Sidebar: React.FC = () => {
           {navSections
             .map((sec) => {
               if (mounted && (user?.role as string) === 'MANAGER') {
-                const allowed = ['/dashboard', '/dispatches', '/trips', '/masters/trucks', '/masters/sources'];
+                const allowed = ['/dashboard', '/dispatches', '/trips', '/fuel', '/masters/trucks', '/masters/sources'];
                 return { ...sec, items: sec.items.filter((i) => allowed.includes(i.href)) };
               }
               return sec;
