@@ -77,7 +77,6 @@ export function MultiTruckRowCard({
           <label className="block text-[11px] font-bold text-slate-700 mb-1">Driver Mobile</label>
           <input
             type="tel"
-            placeholder="Driver Phone"
             value={row.driverMobile}
             maxLength={10}
             placeholder="10-digit mobile (Optional)"

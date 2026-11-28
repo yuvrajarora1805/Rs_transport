@@ -66,7 +66,6 @@ export function SingleTruckSection({
           <label className="block text-sm font-bold text-slate-800 mb-2">Driver Contact Number (For this trip)</label>
           <input
             type="tel"
-            placeholder="e.g. 9829012345 (Driver's mobile)"
             value={form.driverMobile}
             maxLength={10}
             placeholder="10-digit mobile (Optional)"
