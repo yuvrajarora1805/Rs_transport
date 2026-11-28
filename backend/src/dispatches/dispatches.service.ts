@@ -168,6 +168,13 @@ export class DispatchesService {
   }
 
   async getCustomProducts() {
+    await this.db.query(`
+      CREATE TABLE IF NOT EXISTS custom_products (
+        id VARCHAR(36) PRIMARY KEY,
+        name VARCHAR(100) NOT NULL UNIQUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
     const res = await this.db.query('SELECT name FROM custom_products ORDER BY name ASC');
     return res.rows.map((r: any) => r.name);
   }
@@ -175,6 +182,13 @@ export class DispatchesService {
   async addCustomProduct(name: string) {
     const trimmed = (name || '').trim();
     if (!trimmed) return { success: false };
+    await this.db.query(`
+      CREATE TABLE IF NOT EXISTS custom_products (
+        id VARCHAR(36) PRIMARY KEY,
+        name VARCHAR(100) NOT NULL UNIQUE,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `);
     await this.db.query(
       'INSERT IGNORE INTO custom_products (id, name) VALUES (?, ?)',
       [uuidv4(), trimmed],
