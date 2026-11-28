@@ -1,6 +1,7 @@
 import { Injectable, ConflictException, NotFoundException } from '@nestjs/common';
 import { DbService } from '../db/db.service';
 import { ActivityService } from '../activity/activity.service';
+import { MailService } from '../activity/mail.service';
 import { CreateTripDto } from './dto/create-trip.dto';
 import Decimal from 'decimal.js';
 import { v4 as uuidv4 } from 'uuid';
@@ -10,6 +11,7 @@ export class TripsService {
   constructor(
     private db: DbService,
     private activityService: ActivityService,
+    private mailService: MailService,
   ) {}
 
   async create(dto: CreateTripDto, user?: any) {
@@ -159,6 +161,13 @@ export class TripsService {
       );
       await this.activityService.logAction(user, 'CREATE', 'trips', id, `Created trip ${dto.tripNo}`);
     }
+    this.mailService.sendTripNotification({
+      id,
+      trip_no: dto.tripNo,
+      net_weight: weight.toNumber(),
+      gross_freight: gross.toNumber(),
+      slip_image: dto.slipImage,
+    });
 
     return this.findOne(id);
   }

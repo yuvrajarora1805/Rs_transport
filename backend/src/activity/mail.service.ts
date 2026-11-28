@@ -210,5 +210,54 @@ export class MailService implements OnModuleInit {
       this.logger.warn(`Unlock request email failed: ${err.message}`);
     }
   }
+
+  async sendTripNotification(trip: any) {
+    try {
+      const to = await this.getRecipients();
+      const attachments: any[] = [];
+      let slipHtml = '';
+      if (trip?.slip_image && typeof trip.slip_image === 'string' && trip.slip_image.startsWith('data:')) {
+        attachments.push({ filename: `trip-slip-${trip.trip_no || trip.id}.png`, path: trip.slip_image, cid: 'trip-slip' });
+        slipHtml = `<div style="margin-top:12px;"><img src="cid:trip-slip" style="max-width:100%;border-radius:8px;border:1px solid #e2e8f0;" /></div>`;
+      }
+      await this.createTransport().sendMail({
+        from: `"RS Transport ERP" <${process.env.SMTP_USER || 'rs@omvky.com'}>`,
+        to,
+        subject: `New Trip Recorded: ${trip.trip_no || '-'} (${trip.truck_no || '-'})`,
+        html: `<div style="font-family:Segoe UI,Arial,sans-serif;background:#f1f5f9;padding:24px;"><div style="max-width:600px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;"><div style="background:#1e3a8a;color:#fff;padding:16px 24px;"><h2 style="margin:0;font-size:18px;">RS Transport ERP — New Trip Recorded</h2></div><div style="padding:20px 24px;"><p><b>Trip No:</b> ${trip.trip_no || '-'}<br/><b>Truck:</b> ${trip.truck_no || '-'}<br/><b>Net Weight:</b> ${trip.net_weight || 0} MT<br/><b>Gross Freight:</b> ₹${trip.gross_freight || 0}</p>${slipHtml}</div></div></div>`,
+        attachments,
+      });
+    } catch (err: any) {
+      this.logger.warn(`Trip email failed: ${err.message}`);
+    }
+  }
+
+  async sendSettlementNotification(settlement: any) {
+    try {
+      const to = await this.getRecipients();
+      await this.createTransport().sendMail({
+        from: `"RS Transport ERP" <${process.env.SMTP_USER || 'rs@omvky.com'}>`,
+        to,
+        subject: `Settlement Created: ₹${settlement.net_payable || 0} (${settlement.status || 'UNPAID'})`,
+        html: `<div style="font-family:Segoe UI,Arial,sans-serif;background:#f1f5f9;padding:24px;"><div style="max-width:600px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;"><div style="background:#1e3a8a;color:#fff;padding:16px 24px;"><h2 style="margin:0;font-size:18px;">RS Transport ERP — Freight Settlement</h2></div><div style="padding:20px 24px;"><p><b>Gross Freight:</b> ₹${settlement.gross_freight || 0}<br/><b>Diesel Deducted:</b> ₹${settlement.diesel_amount || 0}<br/><b>Net Payable:</b> ₹${settlement.net_payable || 0}<br/><b>Status:</b> ${settlement.status || 'UNPAID'}</p></div></div></div>`,
+      });
+    } catch (err: any) {
+      this.logger.warn(`Settlement email failed: ${err.message}`);
+    }
+  }
+
+  async sendPaymentNotification(payment: any) {
+    try {
+      const to = await this.getRecipients();
+      await this.createTransport().sendMail({
+        from: `"RS Transport ERP" <${process.env.SMTP_USER || 'rs@omvky.com'}>`,
+        to,
+        subject: `Payment Disbursed: ₹${payment.amount || 0} (${payment.payment_mode || 'NEFT'})`,
+        html: `<div style="font-family:Segoe UI,Arial,sans-serif;background:#f1f5f9;padding:24px;"><div style="max-width:600px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e2e8f0;"><div style="background:#15803d;color:#fff;padding:16px 24px;"><h2 style="margin:0;font-size:18px;">RS Transport ERP — Payment Disbursed</h2></div><div style="padding:20px 24px;"><p><b>Amount Paid:</b> ₹${payment.amount || 0}<br/><b>Mode:</b> ${payment.payment_mode || '-'}<br/><b>Ref / UTR:</b> ${payment.ref_no || '-'}<br/><b>Payee:</b> ${payment.paid_to || '-'}</p></div></div></div>`,
+      });
+    } catch (err: any) {
+      this.logger.warn(`Payment email failed: ${err.message}`);
+    }
+  }
 }
 
