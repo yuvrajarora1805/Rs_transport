@@ -110,7 +110,7 @@ export class DispatchesService {
     if (user?.role === 'MANAGER') {
       await this.db.query(
         'UPDATE dispatches SET approval_status = ?, created_by = ? WHERE id = ?',
-        ['PENDING', user.id || null, id],
+        ['APPROVED', user.id || null, id],
       );
     }
 

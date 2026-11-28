@@ -155,7 +155,7 @@ export class TripsService {
     if (user?.role === 'MANAGER') {
       await this.db.query(
         'UPDATE trips SET approval_status = ?, created_by = ? WHERE id = ?',
-        ['PENDING', user.id || null, id],
+        ['APPROVED', user.id || null, id],
       );
       await this.activityService.logAction(user, 'CREATE', 'trips', id, `Created trip ${dto.tripNo}`);
     }

@@ -18,7 +18,7 @@ export class SourcesService {
     }
 
     const id = uuidv4();
-    const approvalStatus = user?.role === 'MANAGER' ? 'PENDING' : 'APPROVED';
+    const approvalStatus = 'APPROVED';
     const createdBy = user?.id || null;
     await this.db.query(
       'INSERT INTO sources (id, name, contact_no, approval_status, created_by) VALUES (?, ?, ?, ?, ?)',

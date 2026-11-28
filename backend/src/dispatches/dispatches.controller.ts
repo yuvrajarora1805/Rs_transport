@@ -1,5 +1,7 @@
 import { Controller, Get, Post, Delete, Param, Body, Query, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { Roles } from '../auth/roles.decorator';
+import { RolesGuard } from '../auth/roles.guard';
 import { DispatchesService } from './dispatches.service';
 import { CreateDispatchDto } from './dto/create-dispatch.dto';
 
@@ -37,6 +39,8 @@ export class DispatchesController {
   }
 
   @Delete(':id')
+  @UseGuards(RolesGuard)
+  @Roles('SUPER_ADMIN', 'ADMIN')
   remove(@Param('id') id: string) {
     return this.dispatchesService.remove(id);
   }

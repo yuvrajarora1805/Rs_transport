@@ -1,5 +1,7 @@
 import { Controller, Get, Post, Delete, Param, Body, Query, Req, UseGuards } from '@nestjs/common';
 import { AuthGuard } from '@nestjs/passport';
+import { Roles } from '../auth/roles.decorator';
+import { RolesGuard } from '../auth/roles.guard';
 import { TripsService } from './trips.service';
 import { CreateTripDto } from './dto/create-trip.dto';
 
@@ -36,6 +38,8 @@ export class TripsController {
   }
 
   @Delete(':id')
+  @UseGuards(RolesGuard)
+  @Roles('SUPER_ADMIN', 'ADMIN')
   remove(@Param('id') id: string) {
     return this.tripsService.remove(id);
   }
