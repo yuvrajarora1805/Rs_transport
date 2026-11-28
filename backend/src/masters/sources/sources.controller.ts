@@ -22,8 +22,10 @@ export class SourcesController {
   findOne(
     @Param('id') id: string,
     @Query('companyCode') companyCode?: string,
+    @Query('fromDate') fromDate?: string,
+    @Query('toDate') toDate?: string,
   ) {
-    return this.sourcesService.findOne(id, companyCode);
+    return this.sourcesService.findOne(id, companyCode, fromDate, toDate);
   }
 }
 

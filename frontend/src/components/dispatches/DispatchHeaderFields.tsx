@@ -55,7 +55,8 @@ export function DispatchHeaderFields({
           <label className="block text-sm font-bold text-slate-800 mb-2">SR / Reference Number</label>
           <input
             type="text"
-            placeholder="e.g. 1001"
+            placeholder="e.g. 1001 (max 6)"
+            maxLength={6}
             value={srNo}
             onChange={(e) => onSrNoChange(e.target.value)}
             className="w-full h-11 px-4 text-base border border-slate-300 rounded-xl focus:ring-2 focus:ring-blue-500 bg-white"

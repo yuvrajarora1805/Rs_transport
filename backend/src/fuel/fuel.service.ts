@@ -123,7 +123,12 @@ export class FuelService {
 
   async findAll(truckId?: string, pumpId?: string) {
     let sql = `
-      SELECT f.*, t.truck_no, p.name as pump_name, tr.trip_no
+      SELECT f.*, t.truck_no, p.name as pump_name, tr.trip_no,
+             (f.trip_id IS NOT NULL OR EXISTS (
+               SELECT 1 FROM dispatches d
+               WHERE d.truck_id = f.truck_id AND d.is_cancelled = false
+                 AND ABS(DATEDIFF(DATE(d.date), DATE(f.date))) <= 2
+             )) as has_active_dispatch
       FROM fuel_transactions f
       JOIN trucks t ON f.truck_id = t.id
       JOIN pumps p ON f.pump_id = p.id

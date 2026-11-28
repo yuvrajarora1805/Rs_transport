@@ -61,4 +61,27 @@ export class PumpsService {
       ledgerEntries: ledger.rows,
     };
   }
+
+  async settlePump(id: string, body: { amount: number; date?: string; description?: string }) {
+    const lastBalRes = await this.db.query(
+      'SELECT balance FROM pump_ledger WHERE pump_id = ? ORDER BY created_at DESC LIMIT 1',
+      [id],
+    );
+    const currBal = lastBalRes.rows.length > 0 ? Number((lastBalRes.rows[0] as any).balance) : 0;
+    const amt = Number(body.amount || 0);
+    const newBal = currBal - amt;
+    await this.db.query(
+      `INSERT INTO pump_ledger (id, pump_id, date, description, debit, credit, balance)
+       VALUES (?, ?, ?, ?, 0, ?, ?)`,
+      [
+        uuidv4(),
+        id,
+        body.date ? new Date(body.date) : new Date(),
+        body.description || 'Pump Payment Settlement',
+        amt,
+        newBal,
+      ],
+    );
+    return { success: true, pumpId: id, amount: amt, newBalance: newBal };
+  }
 }

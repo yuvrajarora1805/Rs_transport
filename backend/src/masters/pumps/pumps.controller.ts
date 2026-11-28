@@ -22,5 +22,13 @@ export class PumpsController {
   findOne(@Param('id') id: string) {
     return this.pumpsService.findOne(id);
   }
+
+  @Post(':id/settle')
+  settlePump(
+    @Param('id') id: string,
+    @Body() body: { amount: number; date?: string; description?: string },
+  ) {
+    return this.pumpsService.settlePump(id, body);
+  }
 }
 

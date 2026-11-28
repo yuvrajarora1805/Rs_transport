@@ -45,25 +45,43 @@ export class SourcesService {
     return res.rows;
   }
 
-  async findOne(id: string, companyCode?: string) {
+  async findOne(id: string, companyCode?: string, fromDate?: string, toDate?: string) {
     const source = await this.db.query('SELECT * FROM sources WHERE id = ?', [id]);
     if (source.rows.length === 0) {
       throw new NotFoundException(`Source ID ${id} not found`);
     }
 
     const dispatchFilter = companyCode && companyCode !== 'ALL' ? `AND d.company_code = '${companyCode}'` : '';
-    const dispatches = await this.db.query(
-      `SELECT d.*, trk.truck_no, trk.owner_name
-       FROM dispatches d
-       JOIN trucks trk ON d.truck_id = trk.id
-       WHERE d.source_id = ? AND d.is_cancelled = false ${dispatchFilter}
-       ORDER BY d.date DESC LIMIT 100`,
-      [id],
-    );
+    const dateFilter = fromDate && toDate ? `AND DATE(d.date) BETWEEN '${fromDate}' AND '${toDate}'` : '';
+    const [dispatches, stationBreakdown] = await Promise.all([
+      this.db.query(
+        `SELECT d.*, trk.truck_no, trk.owner_name
+         FROM dispatches d
+         JOIN trucks trk ON d.truck_id = trk.id
+         WHERE d.source_id = ? AND d.is_cancelled = false ${dispatchFilter} ${dateFilter}
+         ORDER BY d.date DESC LIMIT 100`,
+        [id],
+      ),
+      this.db.query(
+        `SELECT COALESCE(d.destination, 'Unspecified') as station_name,
+                COUNT(DISTINCT d.id) as dispatch_count,
+                COUNT(DISTINCT tr.id) as trip_count,
+                COUNT(DISTINCT d.truck_id) as total_vehicles,
+                COALESCE(SUM(d.bales), 0) as total_bales,
+                COALESCE(SUM(tr.net_weight), 0) as total_weight_mt
+         FROM dispatches d
+         LEFT JOIN trips tr ON tr.dispatch_id = d.id
+         WHERE d.source_id = ? AND d.is_cancelled = false ${dispatchFilter} ${dateFilter}
+         GROUP BY COALESCE(d.destination, 'Unspecified')
+         ORDER BY total_bales DESC`,
+        [id],
+      ),
+    ]);
 
     return {
       ...source.rows[0],
       dispatches: dispatches.rows,
+      stationBreakdown: stationBreakdown.rows,
     };
   }
 }

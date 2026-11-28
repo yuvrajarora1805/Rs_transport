@@ -122,6 +122,7 @@ export class DbService implements OnModuleInit, OnModuleDestroy {
       "ALTER TABLE users ADD COLUMN access_start VARCHAR(5) NOT NULL DEFAULT '09:00'",
       "ALTER TABLE users ADD COLUMN access_end VARCHAR(5) NOT NULL DEFAULT '19:00'",
       'ALTER TABLE users ADD COLUMN temp_unlocked_until DATETIME NULL',
+      "ALTER TABLE users ADD COLUMN assigned_company VARCHAR(30) NOT NULL DEFAULT 'ALL'",
       `CREATE TABLE IF NOT EXISTS access_requests (
         id VARCHAR(36) PRIMARY KEY,
         user_id VARCHAR(36) NOT NULL,

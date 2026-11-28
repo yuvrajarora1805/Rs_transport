@@ -35,7 +35,7 @@ export default function ApprovalsPage() {
   const [alerts, setAlerts] = useState<any>({ fuelWithoutDispatch: [], dispatchesWithoutFuel: [], pendingPumpSettlements: [] });
   const [eod, setEod] = useState<any>(null);
   const [mailStatus, setMailStatus] = useState('');
-  const [newUser, setNewUser] = useState({ username: '', password: '', fullName: '', role: 'MANAGER' });
+  const [newUser, setNewUser] = useState({ username: '', password: '', fullName: '', role: 'MANAGER', assignedCompany: 'ALL' });
   const [userMsg, setUserMsg] = useState('');
 
   const fetchData = async () => {
@@ -105,7 +105,7 @@ export default function ApprovalsPage() {
         method: 'POST',
         body: JSON.stringify(newUser),
       });
-      setNewUser({ username: '', password: '', fullName: '', role: 'MANAGER' });
+      setNewUser({ username: '', password: '', fullName: '', role: 'MANAGER', assignedCompany: 'ALL' });
       setUserMsg('User created successfully!');
       fetchData();
     } catch (err: any) {
@@ -300,6 +300,15 @@ export default function ApprovalsPage() {
             >
               <option value="MANAGER">MANAGER (Today & Yesterday only)</option>
               <option value="ADMIN">ADMIN (Full Access)</option>
+            </select>
+            <select
+              value={newUser.assignedCompany}
+              onChange={(e) => setNewUser({ ...newUser, assignedCompany: e.target.value })}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+            >
+              <option value="ALL">All Firms (RS Transport & Ranbir)</option>
+              <option value="RS_TRANSPORT">RS Transport Only</option>
+              <option value="RANBIR_LOGISTICS">Ranbir Logistics Only</option>
             </select>
             {userMsg && <p className="text-xs font-semibold text-blue-600">{userMsg}</p>}
             <button type="submit" className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold">

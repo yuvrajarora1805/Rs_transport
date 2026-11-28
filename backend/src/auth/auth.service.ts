@@ -56,12 +56,12 @@ export class AuthService {
 
   async listUsers() {
     const res = await this.db.query(
-      'SELECT id, username, full_name, role, is_active, access_start, access_end, temp_unlocked_until FROM users ORDER BY username ASC',
+      'SELECT id, username, full_name, role, is_active, access_start, access_end, temp_unlocked_until, assigned_company FROM users ORDER BY username ASC',
     );
     return res.rows;
   }
 
-  async createUser(body: { username: string; password: string; fullName?: string; role?: string }) {
+  async createUser(body: { username: string; password: string; fullName?: string; role?: string; assignedCompany?: string }) {
     const existing = await this.db.query('SELECT id FROM users WHERE username = ?', [body.username]);
     if (existing.rows.length > 0) {
       throw new ConflictException(`Username "${body.username}" already exists`);
@@ -69,11 +69,12 @@ export class AuthService {
     const id = uuidv4();
     const hash = await bcrypt.hash(body.password, 10);
     const role = body.role === 'ADMIN' || body.role === 'SUPER_ADMIN' ? body.role : 'MANAGER';
+    const company = body.assignedCompany || 'ALL';
     await this.db.query(
-      'INSERT INTO users (id, username, password_hash, full_name, role, is_active) VALUES (?, ?, ?, ?, ?, 1)',
-      [id, body.username, hash, body.fullName || body.username, role],
+      'INSERT INTO users (id, username, password_hash, full_name, role, is_active, assigned_company) VALUES (?, ?, ?, ?, ?, 1, ?)',
+      [id, body.username, hash, body.fullName || body.username, role, company],
     );
-    return { id, username: body.username, fullName: body.fullName || body.username, role };
+    return { id, username: body.username, fullName: body.fullName || body.username, role, assignedCompany: company };
   }
 
   async updateUser(id: string, body: { fullName?: string; role?: string; password?: string; accessStart?: string; accessEnd?: string }) {
