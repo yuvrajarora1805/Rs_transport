@@ -89,7 +89,7 @@ export default function TripsPage() {
                 {formatCurrency(dieselAmt)}
                 {fuelCount >= 1 && (
                   <Link
-                    href={`/fuel?search=${encodeURIComponent(row.truck_no || '')}`}
+                    href={`/fuel?search=${encodeURIComponent((row as any).truck_no || '')}`}
                     className="text-[10px] text-blue-600 hover:underline font-medium ml-1"
                   >
                     ({fuelCount} {fuelCount === 1 ? 'slip' : 'slips'})
