@@ -36,6 +36,7 @@ export default function ApprovalsPage() {
   const [eod, setEod] = useState<any>(null);
   const [mailStatus, setMailStatus] = useState('');
   const [newUser, setNewUser] = useState({ username: '', password: '', fullName: '', role: 'MANAGER', assignedCompany: 'ALL' });
+  const [editingUser, setEditingUser] = useState<any>(null);
   const [userMsg, setUserMsg] = useState('');
 
   const fetchData = async () => {
@@ -369,15 +370,8 @@ export default function ApprovalsPage() {
                   )}
                   <button
                     type="button"
-                    title="Toggle Role (Manager / Admin)"
-                    onClick={async () => {
-                      const nextRole = u.role === 'MANAGER' ? 'ADMIN' : 'MANAGER';
-                      await apiFetch(`/auth/users/${u.id}`, {
-                        method: 'PATCH',
-                        body: JSON.stringify({ fullName: u.full_name || u.username, role: nextRole }),
-                      });
-                      fetchData();
-                    }}
+                    title="Edit User"
+                    onClick={() => setEditingUser({ ...u, password: '' })}
                     className="p-1.5 text-slate-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg"
                   >
                     <Pencil size={15} />
@@ -442,6 +436,67 @@ export default function ApprovalsPage() {
               {(alerts.pendingPumpSettlements || []).slice(0, 8).map((p: any) => (
                 <p key={p.id} className="text-xs text-slate-600 py-1 border-b border-slate-100">{p.name} • ₹{p.balance}</p>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+      {editingUser && (
+        <div className="fixed inset-0 bg-slate-900/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-xl max-w-md w-full p-6 space-y-4">
+            <h3 className="font-bold text-slate-900">Edit User @{editingUser.username}</h3>
+            <input
+              type="text"
+              placeholder="Full Name"
+              value={editingUser.full_name || ''}
+              onChange={(e) => setEditingUser({ ...editingUser, full_name: e.target.value })}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+            />
+            <input
+              type="password"
+              placeholder="New Password (leave blank to keep)"
+              value={editingUser.password || ''}
+              onChange={(e) => setEditingUser({ ...editingUser, password: e.target.value })}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+            />
+            <select
+              value={editingUser.role || 'MANAGER'}
+              onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value })}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+            >
+              <option value="MANAGER">MANAGER</option>
+              <option value="ADMIN">ADMIN</option>
+            </select>
+            <select
+              value={editingUser.assigned_company || 'ALL'}
+              onChange={(e) => setEditingUser({ ...editingUser, assigned_company: e.target.value })}
+              className="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm"
+            >
+              <option value="ALL">All Firms</option>
+              <option value="RS_TRANSPORT">RS Transport</option>
+              <option value="RANBIR_LOGISTICS">Ranbir Logistics</option>
+            </select>
+            <div className="flex justify-end gap-2">
+              <button type="button" onClick={() => setEditingUser(null)} className="px-4 py-2 text-sm text-slate-600">Cancel</button>
+              <button
+                type="button"
+                onClick={async () => {
+                  await apiFetch(`/auth/users/${editingUser.id}`, {
+                    method: 'PATCH',
+                    body: JSON.stringify({
+                      fullName: editingUser.full_name,
+                      role: editingUser.role,
+                      password: editingUser.password || undefined,
+                      accessStart: editingUser.access_start || '09:00',
+                      accessEnd: editingUser.access_end || '19:00',
+                    }),
+                  });
+                  setEditingUser(null);
+                  fetchData();
+                }}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold"
+              >
+                Save Changes
+              </button>
             </div>
           </div>
         </div>
